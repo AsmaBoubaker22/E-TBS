@@ -1,0 +1,1035 @@
+{% extends "theme.html" %}
+
+{% block title %}{{ course.course_name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Set default cursor for everything in this template */
+    .container * {
+        cursor: default !important;
+    }
+    
+    /* Make buttons show pointer cursor */
+    .btn, [onclick] {
+        cursor: pointer !important;
+    }
+</style>
+
+<!-- Course Details --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);">
+            <h1 class="mb-0">{{ course.course_name }}</h1>
+            <div class="d-flex gap-3 mt-3">
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.course_code }}</span>
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.level }}</span>
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.session_type }}</span>
+            </div>
+        </div>
+        
+        <div class="card-body p-5">
+            <h3 class="mb-4">Sessions Schedule</h3>
+            {% for session in course.course_sessions %}
+            <div class="mb-4 p-4 border rounded-3" style="background-color: #f8f9fa;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        {{ session.day }} from {{ session.start }} to {{ session.end }}
+                    </h5>
+                    <span class="badge rounded-pill px-3 py-2" 
+                          style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                        <i class="fas fa-door-open me-1"></i> Room {{ session.classroom }}
+                    </span>
+                    
+                </div>
+                
+                <div class="mt-3">
+                    <h6 class="d-inline-block me-2">
+                        <i class="fas fa-users me-1"></i> Groups:
+                    </h6>
+                    {% for group in session.groups.split(', ') %}
+                    <span class="badge bg-light text-dark rounded-pill px-3 py-1 me-2 border">
+                        {{ group }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+<!-- Course functionalities------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-3 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 8px 8px 0 0;">
+        </div>
+        
+        <div class="card-body p-4">
+            <div class="row g-3">  
+                <!-- Log Presence -->
+                <div class="col-md-6 mb-3"> 
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                        <i class="fas fa-user-check me-2"></i> Log Presence
+                    </button>
+                </div>
+                
+                <!-- Attendance -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                        <i class="fas fa-clipboard-list me-2"></i> Attendance
+                    </button>
+                </div>
+                
+                <!-- Discussions -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                        <i class="fas fa-comments me-2"></i> Discussions
+                    </button>
+                </div>
+                
+                <!-- Course Chat-bot -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%); color: white;">
+                        <i class="fas fa-robot me-2"></i> Course Chat-bot
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Attendance Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Attendance Sessions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4" style="background-color: #f8fafc;">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead style="color: #0e3069;">
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Location</th>
+                                <th>Status</th>
+                                <th>  </th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceSessionsContainer">
+                            <!-- Sessions will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div id="noSessionsMessage" class="text-center py-4">
+                    <i class="fas fa-clipboard text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                    <p class="text-muted mt-3">No attendance sessions found</p>
+                </div>
+            </div>
+           
+             <!-- Modal Footer -->
+             <div class="modal-footer bg-white border-0">
+                <button class="btn px-4 py-2 rounded-pill border-0 mx-auto" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;"
+                        data-bs-toggle="modal" data-bs-target="#createAttendanceModal">
+                    <i class="fas fa-plus-circle me-2"></i> Create Attendance Sheet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Create Attendance Modal  -->
+<div class="modal fade" id="createAttendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-circle-plus me-2"></i> New Attendance Sheet
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4 scrollable-modal-content" style="background-color: #f8fafc;">
+                <div class="modal-body p-4" style="background-color: #f8fafc;">
+                    <form id="attendanceForm" method="POST" action="{{ url_for('public.create_attendance') }}">
+                        <input type="hidden" name="course_professor_id" value="{{ course.course_professor_id }}">
+                        <input type="hidden" name="course_code" value="{{ course.course_code }}">
+
+                        <!-- Date Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Date</label>
+                            <input type="date" name="session_date" class="form-control rounded-3 py-2 border-1" 
+                                style="border-color: #e0e6ed;" required>
+                        </div>
+                        
+                        <!-- Start Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Start Time</label>
+                            <select name="start_time" class="form-select rounded-3 py-2 border-1 mb-2 time-selector" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="" selected disabled>Select start time</option>
+                                <option value="08:30:00">08:30 AM</option>
+                                <option value="10:00:00">10:00 AM</option>
+                                <option value="11:30:00">11:30 AM</option>
+                                <option value="13:30:00">01:30 PM</option>
+                                <option value="15:00:00">03:00 PM</option>
+                                <option value="custom">Custom Time</option>
+                            </select>
+                            <div class="custom-time-container" style="display: none;">
+                                <input type="text" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+
+                        <!-- End Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">End Time</label>
+                            <select name="end_time" class="form-select rounded-3 py-2 border-1 mb-2 time-selector" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="" selected disabled>Select end time</option>
+                                <option value="10:00:00">10:00 AM</option>
+                                <option value="11:30:00">11:30 AM</option>
+                                <option value="13:00:00">01:00 PM</option>
+                                <option value="15:00:00">03:00 PM</option>
+                                <option value="16:30:00">04:30 PM</option>
+                                <option value="custom">Custom Time</option>
+                            </select>
+                            <div class="custom-time-container" style="display: none;">
+                                <input type="text" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Location</label>
+                            <select name="location" class="form-select rounded-3 py-2 border-1" 
+                                style="border-color: #e0e6ed;">
+                            <option value="" disabled selected>Select classroom</option>
+                            
+                            <!-- Amphitheaters (Available) -->
+                            <optgroup label="Amphitheaters">
+                                <option value="A1">Amphitheater 1</option>
+                                <option value="A2">Amphitheater 2</option>
+                                <option value="A3">Amphitheater 3</option>
+                                <option value="A4">Amphitheater 4</option>
+                                <option value="A5">Amphitheater 5</option>
+                                <option value="A6">Amphitheater 6</option>
+                                <option value="A7">Amphitheater 7</option>
+                                <option value="A8">Amphitheater 8</option>
+                                <option value="A9">Amphitheater 9</option>
+                                <option value="A10">Amphitheater 10</option>
+                                <option value="A11">Amphitheater 11</option>
+                                <option value="A12">Amphitheater 12</option>
+                            </optgroup>
+                            
+                            <!-- Classrooms (Available) -->
+                            <optgroup label="Classrooms">
+                                <option value="C1">Classroom 1</option>
+                                <option value="C2">Classroom 2</option>
+                                <option value="C3">Classroom 3</option>
+                                <option value="C4">Classroom 4</option>
+                                <option value="C5">Classroom 5</option>
+                                <option value="C6">Classroom 6</option>
+                                <option value="C7">Classroom 7</option>
+                                <option value="C8">Classroom 8</option>
+                                <option value="C9">Classroom 9</option>
+                                <option value="C10">Classroom 10</option>
+                                <option value="C11">Classroom 11</option>
+                                <option value="C12">Classroom 12</option>
+                                <option value="C13">Classroom 13</option>
+                                <option value="C14">Classroom 14</option>
+                                <option value="C15">Classroom 15</option>
+                                <option value="C16">Classroom 16</option>
+                                <option value="C30">Classroom 30</option>
+                                <option value="C31">Classroom 31</option>
+                                <option value="C32">Classroom 32</option>
+                                <option value="C33">Classroom 33</option>
+                                <option value="C34">Classroom 34</option>
+                            </optgroup>
+                            
+                            <!-- Labs (Available) -->
+                            <optgroup label="Labs">
+                                <option value="L1">Lab 1</option>
+                                <option value="L2">Lab 2</option>
+                                <option value="L3">Lab 3</option>
+                                <option value="L4">Lab 4</option>
+                                <option value="L5">Lab 5</option>
+                                <option value="L6">Lab 6</option>
+                                <option value="L7">Lab 7</option>
+                                <option value="L8">Lab 8</option>
+                                <option value="L9">Lab 9</option>
+                                <option value="L10">Lab 10</option>
+                                <option value="LLINUX">Lab Linux</option>
+                                <option value="LLINUX2">Lab Linux 2</option>
+                            </optgroup>
+
+                            <!-- OTHER -->
+                            <optgroup label="other">
+                                <option value="online">online</option>
+                            </optgroup>
+                        </select>
+                        </div>
+                        
+                        <!-- Additional Details -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Additional Details <span class="text-muted">(Optional)</span></label>
+                            <textarea name="details" class="form-control rounded-3 border-1" rows="3"
+                                    style="border-color: #e0e6ed; resize: none;"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn px-4 py-2 rounded-pill border-0 me-2" 
+                        style="background: #f8f9fa; color: #6c757d;"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="submit" form="attendanceForm" class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;">
+                    <i class="fas fa-check-circle me-2"></i> Create
+                </button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Update Attendance Modal -->
+<div class="modal fade" id="updateAttendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-pen-to-square me-2"></i> Update Attendance Session
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4 scrollable-modal-content" style="background-color: #f8fafc;">
+                <div class="modal-body p-4" style="background-color: #f8fafc;">
+                    <form id="updateAttendanceForm" method="POST" action="{{ url_for('public.update_attendance_session') }}">
+                        <input type="hidden" name="attendance_session_id" id="update_session_id">
+                        <input type="hidden" name="course_code" value="{{ course.course_code }}">
+                        <input type="hidden" name="course_professor_id" value="{{ course.course_professor_id }}">
+                        
+
+                        <!-- Date Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Date</label>
+                            <input type="date" name="session_date" id="update_session_date" 
+                                   class="form-control rounded-3 py-2 border-1" 
+                                   style="border-color: #e0e6ed;" >
+                        </div>
+                        
+                        <!-- Start Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Start Time</label>
+                            <div class="custom-time-container" >
+                                <input type="text" name="start_time" id="update_start_time" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+
+                        <!-- End Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">End Time</label>
+                            <div class="custom-time-container" >
+                                <input type="text" name="end_time" id="update_end_time"  class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Location</label>
+                            <select name="location" id="update_location" 
+                                    class="form-select rounded-3 py-2 border-1" 
+                                    style="border-color: #e0e6ed;">
+                                    <option value="" disabled selected>Select classroom</option>
+                            
+                                    <!-- Amphitheaters (Available) -->
+                                    <optgroup label="Amphitheaters">
+                                        <option value="A1">Amphitheater 1</option>
+                                        <option value="A2">Amphitheater 2</option>
+                                        <option value="A3">Amphitheater 3</option>
+                                        <option value="A4">Amphitheater 4</option>
+                                        <option value="A5">Amphitheater 5</option>
+                                        <option value="A6">Amphitheater 6</option>
+                                        <option value="A7">Amphitheater 7</option>
+                                        <option value="A8">Amphitheater 8</option>
+                                        <option value="A9">Amphitheater 9</option>
+                                        <option value="A10">Amphitheater 10</option>
+                                        <option value="A11">Amphitheater 11</option>
+                                        <option value="A12">Amphitheater 12</option>
+                                    </optgroup>
+                                    
+                                    <!-- Classrooms (Available) -->
+                                    <optgroup label="Classrooms">
+                                        <option value="C1">Classroom 1</option>
+                                        <option value="C2">Classroom 2</option>
+                                        <option value="C3">Classroom 3</option>
+                                        <option value="C4">Classroom 4</option>
+                                        <option value="C5">Classroom 5</option>
+                                        <option value="C6">Classroom 6</option>
+                                        <option value="C7">Classroom 7</option>
+                                        <option value="C8">Classroom 8</option>
+                                        <option value="C9">Classroom 9</option>
+                                        <option value="C10">Classroom 10</option>
+                                        <option value="C11">Classroom 11</option>
+                                        <option value="C12">Classroom 12</option>
+                                        <option value="C13">Classroom 13</option>
+                                        <option value="C14">Classroom 14</option>
+                                        <option value="C15">Classroom 15</option>
+                                        <option value="C16">Classroom 16</option>
+                                        <option value="C30">Classroom 30</option>
+                                        <option value="C31">Classroom 31</option>
+                                        <option value="C32">Classroom 32</option>
+                                        <option value="C33">Classroom 33</option>
+                                        <option value="C34">Classroom 34</option>
+                                    </optgroup>
+                                    
+                                    <!-- Labs (Available) -->
+                                    <optgroup label="Labs">
+                                        <option value="L1">Lab 1</option>
+                                        <option value="L2">Lab 2</option>
+                                        <option value="L3">Lab 3</option>
+                                        <option value="L4">Lab 4</option>
+                                        <option value="L5">Lab 5</option>
+                                        <option value="L6">Lab 6</option>
+                                        <option value="L7">Lab 7</option>
+                                        <option value="L8">Lab 8</option>
+                                        <option value="L9">Lab 9</option>
+                                        <option value="L10">Lab 10</option>
+                                        <option value="LLINUX">Lab Linux</option>
+                                        <option value="LLINUX2">Lab Linux 2</option>
+                                    </optgroup>
+        
+                                    <!-- OTHER -->
+                                    <optgroup label="other">
+                                        <option value="online">online</option>
+                                    </optgroup>
+                            </select>
+                        </div>
+                        
+                        <!-- Additional Details -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Additional Details <span class="text-muted">(Optional)</span></label>
+                            <textarea name="details" id="update_details" 
+                                      class="form-control rounded-3 border-1" rows="3"
+                                      style="border-color: #e0e6ed; resize: none;"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn px-4 py-2 rounded-pill border-0 me-2" 
+                        style="background: #f8f9fa; color: #6c757d;"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="submit" form="updateAttendanceForm" class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;">
+                    <i class="fas fa-save me-2"></i> Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mini delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-trash-alt text-danger mb-3" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Delete this session?</h5>
+          <p class="small text-muted">This action cannot be undone</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="confirmDeleteBtn">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<!-- Mini closing attendance Confirmation Modal -->
+<div class="modal fade" id="closeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-lock text-warning mb-3" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Close this session?</h5>
+          <p class="small text-muted">Students won't be able to mark attendance after closing</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-warning" id="confirmCloseBtn">
+                <i class="fas fa-lock me-1"></i> Close Session
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+
+
+
+<!-- SCRIPTSSSSSS ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Handling custom Time in Attendance -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle custom time selection
+        document.querySelectorAll('.time-selector').forEach(select => {
+            select.addEventListener('change', function() {
+                const container = this.closest('.mb-4').querySelector('.custom-time-container');
+                if(this.value === 'custom') {
+                    container.style.display = 'block';
+                    const input = container.querySelector('.custom-time-input');
+                    input.value = '';
+                    input.focus();
+                    this.dataset.customSelected = 'true';
+                } else {
+                    container.style.display = 'none';
+                    this.dataset.customSelected = 'false';
+                }
+            });
+        });
+    
+        // Time input handler
+        document.querySelectorAll('.custom-time-input').forEach(input => {
+            let lastValidValue = '';
+            
+            input.addEventListener('input', function(e) {
+                // Get cursor position before changes
+                const cursorPos = this.selectionStart;
+                
+                // Remove all non-digits and limit to 6 numbers (HHMMSS)
+                let numbers = this.value.replace(/[^\d]/g, '').substring(0, 6);
+                let formatted = '';
+                
+                // Build formatted string step by step
+                if (numbers.length > 0) {
+                    formatted = numbers.substring(0, 2); // HH
+                    
+                    if (numbers.length >= 3) {
+                        // Validate hours (00-23)
+                        const hours = parseInt(numbers.substring(0, 2));
+                        if (hours > 23) {
+                            numbers = '23' + numbers.substring(2);
+                            formatted = '23';
+                        }
+                        
+                        formatted += ':' + numbers.substring(2, 4); // :MM
+                        
+                        if (numbers.length >= 5) {
+                            // Validate minutes (00-59)
+                            const mins = parseInt(numbers.substring(2, 4));
+                            if (mins > 59) {
+                                numbers = numbers.substring(0, 2) + '59' + numbers.substring(4);
+                                formatted = formatted.substring(0, 3) + '59';
+                            }
+                            
+                            formatted += ':' + numbers.substring(4, 6); // :SS
+                            
+                            // Validate seconds (00-59)
+                            const secs = parseInt(numbers.substring(4, 6));
+                            if (secs > 59) {
+                                numbers = numbers.substring(0, 4) + '59';
+                                formatted = formatted.substring(0, 6) + '59';
+                            }
+                        }
+                    }
+                }
+                
+                // Update value
+                this.value = formatted;
+                lastValidValue = this.value;
+                
+                // Restore cursor position (adjusted for added colons)
+                let newCursorPos = cursorPos;
+                if (cursorPos >= 2 && numbers.length >= 2 && this.value.length > cursorPos) newCursorPos++;
+                if (cursorPos >= 4 && numbers.length >= 4 && this.value.length > cursorPos) newCursorPos++;
+                this.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Visual validation
+                const isValid = this.value.length === 8; // HH:MM:SS
+                this.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            });
+            
+            // Blur validation to ensure complete time
+            input.addEventListener('blur', function() {
+                if (this.value.length === 5) { // Missing seconds (HH:MM)
+                    this.value += ':00';
+                } else if (this.value.length === 2) { // Only hours (HH)
+                    this.value += ':00:00';
+                }
+                
+                // Final format validation
+                if(!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#e0e6ed';
+                }
+            });
+        });
+
+        // Form submission handler
+        document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+            let formValid = true;
+            const customTimeErrors = [];
+            
+            // Handle custom time inputs
+            document.querySelectorAll('.time-selector').forEach((select, index) => {
+                const container = select.closest('.mb-4').querySelector('.custom-time-container');
+                const customInput = container.querySelector('.custom-time-input');
+                
+                if (select.dataset.customSelected === 'true') {
+                    if (!customInput.value || !/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(customInput.value)) {
+                        customInput.style.borderColor = '#dc3545';
+                        customTimeErrors.push(index === 0 ? 'Start time' : 'End time');
+                        formValid = false;
+                    } else {
+                        // Create a hidden input to submit the custom time
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = select.name;
+                        hiddenInput.value = customInput.value;
+                        select.insertAdjacentElement('afterend', hiddenInput);
+                        
+                        // Disable the original select to skip its validation
+                        select.disabled = true;
+                    }
+                }
+            });
+            
+            if (!formValid) {
+                e.preventDefault();
+                alert(`Please enter valid custom ${customTimeErrors.join(' and ')}`);
+            }
+        });
+    });
+</script>
+
+
+<!-- Attendance Sessions Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize modals outside the event listener
+        const confirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        const confirmCloseModal = new bootstrap.Modal(document.getElementById('closeConfirmModal'));
+        const updateModal = new bootstrap.Modal(document.getElementById('updateAttendanceModal'));
+        let currentSessionIdToDelete = null;
+        let currentSessionIdToClose = null;
+    
+        document.getElementById('attendanceModal').addEventListener('show.bs.modal', function () {
+            const courseProfessorId = {{ course.course_professor_id }};
+            const container = document.getElementById('attendanceSessionsContainer');
+            const emptyMsg = document.getElementById('noSessionsMessage');
+            
+
+            const loadSessions = () => {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+    
+                fetch(`/get_attendance_sessions/${courseProfessorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.sessions.length > 0) {
+                            emptyMsg.style.display = 'none';
+                            renderSessions(data.sessions);
+                            setupDeleteHandlers();
+                            setupModifyHandlers();
+                            setupCloseHandlers();
+                        }
+                    })
+                    .catch(console.error);
+            };
+    
+
+            const renderSessions = (sessions) => {
+                sessions.forEach(session => {
+                    const now = new Date();
+                    const currentTime = now.toTimeString().substring(0, 8);
+                    const currentDate = now.toISOString().split('T')[0];
+    
+                    const isActiveSession = !session.closed &&
+                        session.formatted_date === currentDate &&
+                        currentTime >= session.start_time &&
+                        currentTime <= session.end_time;
+    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="position-relative">
+                            ${session.formatted_date}
+                            ${session.details ? `
+                                <div class="session-details-tooltip">
+                                    <i class="fas fa-info-circle ms-2 text-muted"></i>
+                                    <div class="details-content">${session.details}</div>
+                                </div>` : ''}
+                        </td>
+                        <td>${session.start_time} - ${session.end_time}</td>
+                        <td>${session.location}</td>
+                        <td>
+                            <span class="badge ${session.closed ? 'bg-success' : 'bg-warning'}">
+                                ${session.closed ? 'Finished' : isActiveSession ? 'Happening Now' : 'Upcoming'}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-3">
+                                ${session.closed ? `
+                                    <button class="action-btn checklist-btn" onclick="window.location.href='/attendance_sheet/${session.attendance_session_id}'">
+                                        <i class="fas fa-list-check me-1"></i> Checklist
+                                    </button>` : `
+                                    ${isActiveSession ? `
+                                        <button class="action-btn close-btn"  data-session-id="${session.attendance_session_id}">
+                                            <i class="fas fa-lock me-1"></i> Close List
+                                        </button>` : `
+                                        <button class="action-btn modify-btn"
+                                                data-session-id="${session.attendance_session_id}"
+                                                data-session-date="${session.formatted_date}"
+                                                data-start-time="${session.start_time}"
+                                                data-end-time="${session.end_time}"
+                                                data-location="${session.location}"
+                                                data-details="${session.details || ''}" data-bs-toggle="modal" data-bs-target="#updateAttendanceModal">
+                                            <i class="fas fa-pencil-alt me-1"></i> Modify
+                                        </button>`}
+                                <button class="action-btn delete-btn" data-session-id="${session.attendance_session_id}">
+                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                </button>`}
+                            </div>
+                        </td>`;
+                    container.appendChild(row);
+                });
+            };
+    
+
+            const setTimeField = (fieldId, timeValue) => {
+                const input = document.getElementById(fieldId);
+                if (!input) return;
+            
+                // Normalize to HH:MM:SS format
+                let parts = timeValue.split(':');
+            
+                if (parts.length === 2) {
+                    // Add missing seconds
+                    timeValue = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+                } else if (parts.length === 1) {
+                    // Only hours — unlikely, but just in case
+                    timeValue = `${parts[0].padStart(2, '0')}:00:00`;
+                } else if (parts.length === 3) {
+                    // Pad each part if needed
+                    timeValue = parts.map(p => p.padStart(2, '0')).join(':');
+                }
+            
+                // Show the container in case it's hidden
+                const container = input.closest('.custom-time-container');
+                if (container) container.style.display = 'block';
+            
+                // Set the value and validate visually
+                input.value = timeValue;
+            
+                const isValid = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(timeValue);
+                input.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            };
+            
+
+            const setupModifyHandlers = () => {
+                document.querySelectorAll('.modify-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        // Populate modal fields with session data
+                        document.getElementById('update_session_id').value = this.getAttribute('data-session-id');
+                        document.getElementById('update_session_date').value = this.getAttribute('data-session-date');
+                        document.getElementById('update_location').value = this.getAttribute('data-location');
+                        document.getElementById('update_details').value = this.getAttribute('data-details');
+            
+                        const startTime = this.getAttribute('data-start-time');
+                        const endTime = this.getAttribute('data-end-time');
+            
+                        // Just set the time input values directly
+                        setTimeField('update_start_time', startTime);
+                        setTimeField('update_end_time', endTime);
+                    });
+                });
+            };
+            
+
+            const setupDeleteHandlers = () => {
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        currentSessionIdToDelete = this.getAttribute('data-session-id');
+                        confirmModal.show();
+                    });
+                });
+            };
+    
+            
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+                if (!currentSessionIdToDelete) return;
+    
+                const btn = this;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+                btn.disabled = true;
+    
+                fetch(`/delete_attendance_session/${currentSessionIdToDelete}`, { method: 'DELETE' })
+                    .then(res => {
+                        if (res.ok) {
+                            confirmModal.hide();
+                            loadSessions();
+                        } else throw new Error();
+                    })
+                    .catch(console.error)
+                    .finally(() => {
+                        btn.innerHTML = 'Delete';
+                        btn.disabled = false;
+                    });
+            });
+    
+            
+            const setupCloseHandlers = () => {
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        currentSessionIdToClose = this.getAttribute('data-session-id');
+                        confirmCloseModal.show();
+                    });
+                });
+            };
+
+
+            document.getElementById('confirmCloseBtn').addEventListener('click', function () {
+                if (!currentSessionIdToClose) return;
+    
+                const btn = this;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Closing...';
+                btn.disabled = true;
+    
+                fetch(`/close_attendance_session/${currentSessionIdToClose}`, { method: 'POST' })
+                    .then(res => {
+                        if (res.ok) {
+                            confirmCloseModal.hide();
+                            loadSessions();
+                        } else throw new Error();
+                    })
+                    .catch(console.error)
+                    .finally(() => {
+                        btn.innerHTML = 'Close';
+                        btn.disabled = false;
+                    });
+            });
+    
+
+
+            loadSessions();
+        });
+    });
+</script>
+ 
+
+<!-- Handling the Modification of attendance sessions -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setupModifyHandlers();
+        
+        document.querySelectorAll('.time-selector').forEach(select => {
+            select.addEventListener('change', function() {
+                const container = this.closest('.mb-4').querySelector('.custom-time-container');
+                if(this.value === 'custom') {
+                    container.style.display = 'block';
+                    const input = container.querySelector('.custom-time-input');
+                    input.value = '';
+                    input.focus();
+                    this.dataset.customSelected = 'true';
+                } else {
+                    container.style.display = 'none';
+                    this.dataset.customSelected = 'false';
+                }
+            });
+        });
+    
+        // Time input handler
+        document.querySelectorAll('.custom-time-input').forEach(input => {
+            let lastValidValue = '';
+            
+            input.addEventListener('input', function(e) {
+                // Get cursor position before changes
+                const cursorPos = this.selectionStart;
+                
+                // Remove all non-digits and limit to 6 numbers (HHMMSS)
+                let numbers = this.value.replace(/[^\d]/g, '').substring(0, 6);
+                let formatted = '';
+                
+                // Build formatted string step by step
+                if (numbers.length > 0) {
+                    formatted = numbers.substring(0, 2); // HH
+                    
+                    if (numbers.length >= 3) {
+                        // Validate hours (00-23)
+                        const hours = parseInt(numbers.substring(0, 2));
+                        if (hours > 23) {
+                            numbers = '23' + numbers.substring(2);
+                            formatted = '23';
+                        }
+                        
+                        formatted += ':' + numbers.substring(2, 4); // :MM
+                        
+                        if (numbers.length >= 5) {
+                            // Validate minutes (00-59)
+                            const mins = parseInt(numbers.substring(2, 4));
+                            if (mins > 59) {
+                                numbers = numbers.substring(0, 2) + '59' + numbers.substring(4);
+                                formatted = formatted.substring(0, 3) + '59';
+                            }
+                            
+                            formatted += ':' + numbers.substring(4, 6); // :SS
+                            
+                            // Validate seconds (00-59)
+                            const secs = parseInt(numbers.substring(4, 6));
+                            if (secs > 59) {
+                                numbers = numbers.substring(0, 4) + '59';
+                                formatted = formatted.substring(0, 6) + '59';
+                            }
+                        }
+                    }
+                }
+                
+                // Update value
+                this.value = formatted;
+                lastValidValue = this.value;
+                
+                // Restore cursor position (adjusted for added colons)
+                let newCursorPos = cursorPos;
+                if (cursorPos >= 2 && numbers.length >= 2 && this.value.length > cursorPos) newCursorPos++;
+                if (cursorPos >= 4 && numbers.length >= 4 && this.value.length > cursorPos) newCursorPos++;
+                this.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Visual validation
+                const isValid = this.value.length === 8; // HH:MM:SS
+                this.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            });
+            
+            // Blur validation to ensure complete time
+            input.addEventListener('blur', function() {
+                if (this.value.length === 5) { // Missing seconds (HH:MM)
+                    this.value += ':00';
+                } else if (this.value.length === 2) { // Only hours (HH)
+                    this.value += ':00:00';
+                }
+                
+                // Final format validation
+                if(!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#e0e6ed';
+                }
+            });
+        });
+
+        // Form submission handler
+        document.getElementById('updateAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default submission
+            
+            let isValid = true;
+            const formData = new FormData(this);
+            
+            // Handle time selectors
+            document.querySelectorAll('.time-selector').forEach((select) => {
+                const name = select.name;
+                const value = select.value;
+                
+                if (value === 'custom') {
+                    const container = select.closest('.mb-4').querySelector('.custom-time-container');
+                    const customInput = container.querySelector('.custom-time-input');
+                    const customValue = customInput.value;
+                    
+                    if (!customValue || !/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(customValue)) {
+                        customInput.style.borderColor = '#dc3545';
+                        isValid = false;
+                    } else {
+                        // Replace the original select value with custom value
+                        formData.set(name, customValue);
+                    }
+                }
+            });
+            
+            if (!isValid) {
+                alert('Please enter valid time values in the custom fields');
+                return;
+            }
+            
+            // Submit the form using fetch
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload(); // Reload the page on success
+                } else {
+                    alert('There was a problem updating the attendance session.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the attendance session.');
+            });
+        });
+    });
+</script>
+
+
+
+
+
+{% endblock %}

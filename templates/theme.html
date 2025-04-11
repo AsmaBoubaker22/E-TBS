@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+      integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style.css') }}">
+
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='style2.css') }}">
+    
+    <title>{% block title %}Home{% endblock %}</title>
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbar">
+        <div class="navbar-nav">
+          {# Show when NOT logged in #}
+          {% if 'user_id' not in session %}
+            <a class="nav-item nav-link" id="home" href="/">Home</a>
+            <a class="nav-item nav-link" id="publicMap" href="/publicMap">Map</a>
+          {% endif %}
+          
+          {# Show only to professors #}
+          {% if 'role' in session and session.role == 'professor' %}
+            <a class="nav-item nav-link" id="professorCourses" href="/Pcourses">Courses</a>
+          {% endif %}
+          
+          {# Show only to students #}
+          {% if 'role' in session and session.role == 'student' %}
+            <a class="nav-item nav-link" id="studentCourses" href="/Scourses">Courses</a>
+          {% endif %}
+
+          {# Show when logged in #}
+          {% if 'user_id' in session %}
+            <a class="nav-item nav-link" id="privateMap" href="/privateMap">Map</a>
+          {% endif %}
+
+        </div>
+        
+        <div class="navbar-nav ml-auto">
+          {# Show when NOT logged in #}
+          {% if 'user_id' not in session %}
+            <button class="nav-item nav-link btn btn-primary" id="loginBtn" data-toggle="modal" data-target="#loginModal">Login</button>
+            <button class="nav-item nav-link btn btn-success" id="signUpBtn" data-toggle="modal" data-target="#signUpModal">Sign Up</button>
+          {% endif %}
+          
+          {# Show when logged in #}
+          <div class="navbar-nav ml-auto">
+          {% if 'user_id' in session %}
+            <span class="nav-item nav-link text-light" style="margin-right: 10px;">
+              User : <strong>{{ session['username'] }}</strong>
+            </span>
+            <form action="{{ url_for('public.logout') }}" method="POST" class="nav-item">
+              <button type="submit" class="nav-link btn btn-danger">Logout</button>
+            </form>
+          {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container">{% block content %} {% endblock %}</div>
+
+    <!-- Bootstrap JS (Bootstrap 4) -->
+    <script
+      src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+      integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"
+      integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"
+      integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+      crossorigin="anonymous"
+    ></script>
+  
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="POST" action="{{ url_for('public.login') }}" id="loginForm" onsubmit="return handleSubmit(event)">
+            <div class="modal-header">
+              <h5 class="modal-title" id="loginModalLabel">Login</h5>
+              <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="loginUsernameInput" class="form-label">Username</label>
+                <input type="text" class="form-control" id="loginUsernameInput" name="username" placeholder="Enter your username" required>
+              </div>
+              <div class="mb-3">
+                <label for="loginPasswordInput" class="form-label">Password</label>
+                <input type="password" class="form-control" id="loginPasswordInput" name="password" placeholder="Enter your password" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Login</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sign Up Modal -->
+    <div class="modal fade" id="signUpModal" tabindex="-1" aria-labelledby="signUpModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form method="POST" action="{{ url_for('public.signup') }}" id="signupForm" onsubmit="return handleSubmit(event)"> 
+            <div class="modal-header">
+              <h5 class="modal-title" id="signUpModalLabel">Sign Up</h5>
+              <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="signUpRoleSelect" class="form-label">Select Role</label>
+                <select class="form-select" id="signUpRoleSelect" name="role">
+                  <option value="student">Student</option>
+                  <option value="professor">Professor</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="nationalIdInput" class="form-label">National ID</label>
+                <input type="text" class="form-control" id="nationalIdInput" name="national_id" placeholder="Enter your national ID" required>
+              </div>
+              <div class="mb-3">
+                <label for="signUpUsernameInput" class="form-label">Username</label>
+                <input type="text" class="form-control" id="signUpUsernameInput" name="username" placeholder="Enter your username" required>
+              </div>
+              <div class="mb-3">
+                <label for="universityEmailInput" class="form-label">University Email</label>
+                <input type="email" class="form-control" id="universityEmailInput" name="university_email" placeholder="@tbs.u-tunis.tn" required>
+              </div>
+              <div class="mb-3">
+                <label for="notificationEmailInput" class="form-label">Notification Email</label>
+                <input type="email" class="form-control" id="notificationEmailInput" name="notification_email" placeholder="where you get notifications"  data-bs-toggle="tooltip" title="you can change this whenever you want. Please put your most frequently used email.">
+              </div>
+              <div class="mb-3">
+                <label for="phoneNumberInput" class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" id="phoneNumberInput" name="phone_number" placeholder="Enter your phone number">
+              </div>
+              <div class="mb-3">
+                <label for="signUpPasswordInput" class="form-label">Password</label>
+                <input type="password" class="form-control" id="signUpPasswordInput" name="password" placeholder="Enter your password" required>
+              </div>
+              <div class="mb-3">
+                <label for="confirmPasswordInput" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirmPasswordInput" name="confirm_password" placeholder="Confirm your password" required>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-success">Sign Up</button> 
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verification Code Modal -->
+    <!--<div class="modal fade" id="verificationCodeModal" tabindex="-1" aria-labelledby="verificationCodeModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="verificationCodeModalLabel">Verify Your Email</h5>
+            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Please enter the code you received on your email to create your account.</p>
+            <div class="d-flex justify-content-between">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+              <input type="text" class="form-control code-input" maxlength="1" placeholder="X">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-success" id="confirmCodeBtn">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>-->
+
+<!-- Flashed messages to handle the user errors --> 
+<!-- Flash Messages as Popups -->
+{% with flashes = get_flashed_messages(with_categories=true) %}
+  {% if flashes %}
+    <div class="flash-container" style="position: fixed; top: 20px; right: 20px; z-index: 1000;">
+      {% for category, flash in flashes %}
+        <div class="flash-popup animate__animated animate__fadeInRight animate__faster mb-2 
+                    {% if category == 'E' %}flash-error{% else %}flash-success{% endif %}"
+             style="min-width: 250px; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    display: flex; justify-content: space-between; align-items: center;">
+          <span>{{ flash }}</span>
+          <button type="button" class="flash-close" 
+                  style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">
+            &times;
+          </button>
+        </div>
+      {% endfor %}
+    </div>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const closeButtons = document.querySelectorAll('.flash-close');
+        closeButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const popup = this.closest('.flash-popup');
+            popup.classList.remove('animate__fadeInRight');
+            popup.classList.add('animate__fadeOutRight');
+            setTimeout(() => popup.remove(), 300);
+          });
+        });
+
+        // Auto-dismiss after 5 seconds
+        const popups = document.querySelectorAll('.flash-popup');
+        popups.forEach(popup => {
+          setTimeout(() => {
+            popup.classList.remove('animate__fadeInRight');
+            popup.classList.add('animate__fadeOutRight');
+            setTimeout(() => popup.remove(), 300);
+          }, 5000);
+        });
+      });
+    </script>
+  {% endif %}
+{% endwith %}
+
+<!-- handling signup -->
+<script>
+  document.querySelector('#signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Disable button during submission
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating account...';
+    
+    try {
+      const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+          }
+      });
+  
+      const result = await response.json();
+  
+      if (result.success) {
+          if (result.redirect) {
+              createFlashPopup('Account created successfully!', 'success');
+              setTimeout(() => {
+                  window.location.href = result.url;
+              }, 1500);
+          } else {
+              window.location.href = result.url;
+          }
+      } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign Up';  // Changed from 'Login' to 'Sign Up'
+          createFlashPopup(result.message, result.category || 'E');
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign Up';  // Changed from 'Login' to 'Sign Up'
+      createFlashPopup('Network error - please try again', 'E');
+    } 
+});
+
+// Helper function to create flash-style popups
+function createFlashPopup(message, category) {
+    const flashContainer = document.querySelector('.flash-container') || createFlashContainer();
+    const popup = document.createElement('div');
+    
+    popup.className = `flash-popup animate__animated animate__fadeInRight animate__faster mb-2 ${category === 'E' ? 'flash-error' : 'flash-success'}`;
+    popup.style.cssText = 'min-width: 250px; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; justify-content: space-between; align-items: center;';
+    
+    popup.innerHTML = `
+        <span>${message}</span>
+        <button type="button" class="flash-close" style="background: none; border: none; font-size: 1.2rem; cursor: pointer;">
+            &times;
+        </button>
+    `;
+    
+    flashContainer.appendChild(popup);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        popup.classList.remove('animate__fadeInRight');
+        popup.classList.add('animate__fadeOutRight');
+        setTimeout(() => popup.remove(), 300);
+    }, 5000);
+    
+    // Manual close
+    popup.querySelector('.flash-close').addEventListener('click', () => {
+        popup.classList.remove('animate__fadeInRight');
+        popup.classList.add('animate__fadeOutRight');
+        setTimeout(() => popup.remove(), 300);
+    });
+}
+
+function createFlashContainer() {
+    const container = document.createElement('div');
+    container.className = 'flash-container';
+    container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
+    document.body.appendChild(container);
+    return container;
+}
+</script>
+
+<!-- handling login -->
+<script>
+  document.querySelector('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Disable button during submission
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...';
+    
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            body: new FormData(form),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (result.redirect) {
+                // Show success message then redirect (exactly like signup)
+                createFlashPopup('Login successful!', 'success');
+                setTimeout(() => {
+                    window.location.href = result.url;
+                }, 1500);  // Same 1.5 second delay as signup
+            } else {
+                window.location.href = result.url;
+            }
+        } else {
+            // Re-enable the button
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Login';
+            
+            // Create error flash popup
+            createFlashPopup(result.message, result.category || 'E');
+        }
+    } catch (error) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Login';
+        createFlashPopup('Network error - please try again', 'E');
+    }
+});
+
+</script>
+
+<!-- some additions to the flash messages popus-->
+<script>
+  // Handle Sign Up button click in the first modal
+  document.getElementById('modalSignUpBtn').addEventListener('click', function () {
+    const signUpModal = $('#signUpModal').modal('hide');
+    const verificationCodeModal = $('#verificationCodeModal').modal('show');
+  });
+
+  // Auto-focus the next input field when a code character is entered
+  document.querySelectorAll('.code-input').forEach((input, index, inputs) => {
+    input.addEventListener('input', () => {
+      if (input.value.length === 1 && index < inputs.length - 1) {
+        inputs[index + 1].focus();
+      }
+    });
+
+    // Handle Backspace for auto-delete
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Backspace' && input.value.length === 0 && index > 0) {
+        inputs[index - 1].focus();
+        inputs[index - 1].value = '';
+      }
+    });
+  });
+</script>
+
+
+  </body>
+</html>

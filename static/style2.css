@@ -1,0 +1,197 @@
+/* animation for courses hover (important)*/
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+}
+
+.card:hover,
+.card .border.rounded-3:hover {  
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.12);
+    transition: all 0.3s ease; 
+}
+
+.card {
+    transition: all 0.3s ease !important;
+}
+.card .border.rounded-3 {
+    transition: all 0.3s ease !important;
+    position: relative; /* Needed for z-index */
+    z-index: 1; /* Prevents shadow clipping */
+}
+
+/* unnecessary star animation, JUST FOR FUN XD */
+.card {
+    position: relative; 
+    overflow: visible;
+}
+
+.card:hover:after {
+    content: '✨';
+    position: absolute;
+    z-index: 100;
+    top: -8px;
+    right: -8px;
+    font-size: 1.8rem; /* Slightly larger than before */
+    pointer-events: none;
+    animation: sparkle 1.8s ease infinite;
+    text-shadow: 
+        0 0 5px rgba(255, 255, 255, 0.7),
+        0 0 8px rgba(255, 215, 0, 0.4);   
+    opacity: 0.9; 
+}
+
+@keyframes sparkle {
+    0% { transform: scale(0.7) rotate(0deg); opacity: 0.7; }
+    50% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+    100% { transform: scale(0.7) rotate(0deg); opacity: 0.7; }
+}
+
+/* scrolling for creating attandance session */
+.scrollable-modal-content {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding-right: 12px; /* Prevent content shift when scrollbar appears */
+}
+
+.scrollable-modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.scrollable-modal-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+.scrollable-modal-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+.scrollable-modal-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+
+/*for attendance session displayy*/
+#attendanceSessionsContainer tr {
+    transition: all 0.2s ease;
+}
+#attendanceSessionsContainer tr:hover {
+    background-color: rgba(11, 5, 76, 0.05);
+}
+.view-session {
+    padding: 0.25rem 0.5rem;
+    border-radius: 50%;
+}
+
+/*attendance buttons*/
+.action-btn {
+    padding: 0.35rem 1rem;
+    border-radius: 50px;
+    border: 1px solid;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0.25rem; /* Added margin for extra spacing */
+}
+
+.checklist-btn {
+    border-color: #2575fc;
+    color: #2575fc;
+    background: white;
+}
+
+.modify-btn {
+    border-color: #6c757d;
+    color: #6c757d;
+    background: white;
+}
+
+.close-btn, .delete-btn {
+    border-color: #dc3545;
+    color: #dc3545;
+    background: white;
+}
+
+.action-btn:hover {
+    color: white !important;
+}
+
+.checklist-btn:hover {
+    background: linear-gradient(135deg, #2575fc 0%, #11998e 100%);
+}
+
+.modify-btn:hover {
+    background: #6c757d;
+}
+
+.close-btn:hover, .delete-btn:hover {
+    background: #dc3545;
+}
+
+#attendanceSessionsContainer td:last-child {
+    padding-right: 1.5rem !important;
+}
+
+/* Session details tooltip , the hover of the date that displays the details*/
+.session-details-tooltip {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+}
+
+.session-details-tooltip .details-content {
+    visibility: hidden;
+    width: 200px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    word-wrap: break-word;
+}
+
+.session-details-tooltip .details-content::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -5px;
+    border-width: 5px;
+    border-style: solid;
+    border-color: #555 transparent transparent transparent;
+}
+
+.session-details-tooltip:hover .details-content {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Small confirmation modals */
+#deleteConfirmModal .modal-dialog,
+#closeConfirmModal .modal-dialog,
+#attendanceConfirmModal .modal-dialog {
+    max-width: 300px;
+}
+
+#deleteConfirmModal .modal-content,
+#closeConfirmModal .modal-content,
+#attendanceConfirmModal .modal-content {
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+#deleteConfirmModal .btn-sm,
+#closeConfirmModal .btn-sm,
+#attendanceConfirmModal .modal-sm{
+    padding: 0.35rem 1.25rem;
+    font-size: 0.85rem;
+}
+
