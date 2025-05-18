@@ -1,0 +1,492 @@
+/*navbar --------------------------------------------------------------------------------------------*/
+/* Custom Navbar Color */
+.navbar {
+    background-color: #343461 !important; 
+  }
+  
+/* Change the hover color of the navbar links */
+.navbar-nav .nav-link:hover {
+    color: #ffffff !important; 
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #232345; 
+}
+
+.navbar {
+  background-color: #343461 !important;
+  position: fixed; 
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1030; /* Ensure it stays above other content */
+  width: 100% !important; 
+  padding: 0.5rem 1rem; 
+}
+
+body {
+  padding-top: 56px; /* Navbar height */
+}
+
+/* Custom Modal Styling */
+/*login popup----------------------------------------------------------------------------------------*/
+#loginModal .modal-content {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  #loginModal .modal-header {
+    background-color: #007bff;
+    color: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+  }
+  
+  #loginModal .modal-title {
+    font-weight: bold;
+  }
+  
+  #loginModal .modal-footer {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+  
+  #loginModal .btn-primary {
+    background-color: #007bff;
+    border: none;
+  }
+  
+  #loginModal .btn-primary:hover {
+    background-color: #0056b3;
+  }
+
+
+/* Sign Up Modal Styling ------------------------------------------------------------------------------------ */
+#signUpModal .modal-content {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  #signUpModal .modal-header {
+    background-color: #28a745; 
+    color: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+  }
+  
+  #signUpModal .modal-title {
+    font-weight: bold;
+  }
+  
+  #signUpModal .modal-footer {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+  
+  #signUpModal .btn-success {
+    background-color: #28a745; 
+    border: none;
+  }
+  
+  #signUpModal .btn-success:hover {
+    background-color: #218838; 
+  }
+
+/* Verification Code Modal Styling---------------------------------------------------------------- */
+#verificationCodeModal .modal-content {
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  }
+  
+  #verificationCodeModal .modal-header {
+    background-color: #28a745; 
+    color: white;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+  }
+  
+  #verificationCodeModal .modal-title {
+    font-weight: bold;
+  }
+  
+  #verificationCodeModal .modal-footer {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+  
+  #verificationCodeModal .btn-success {
+    background-color: #28a745; 
+    border: none;
+  }
+  
+  #verificationCodeModal .btn-success:hover {
+    background-color: #218838; 
+  }
+  
+  /* Code Input Fields Styling */
+  .code-input {
+    width: 15%;
+    text-align: center;
+    margin: 0 2px;
+  }
+
+  /* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');
+
+/* Style the Title */
+.beautiful-title {
+  font-family: 'Poppins', sans-serif; /* Use a modern font */
+  font-size: 3rem; /* Large font size */
+  font-weight: 600; /* Semi-bold */
+  background: linear-gradient(90deg, #ffffff, #f3f9fb); /* Blue gradient */
+  -webkit-background-clip: text; /* Clip the background to the text */
+  -webkit-text-fill-color: transparent; /* Make the text transparent */
+  text-align: center; /* Center the title */
+  margin: 2rem 0; /* Add some margin */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2); /* Subtle shadow */
+}
+
+.map-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #003dae;
+  border-radius: 1rem;
+  padding: 0.5rem; /* Thin border */
+  width: 90%;
+  max-width: 60rem; /* Wider container */
+  margin: 2rem auto;
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.map-container:hover {
+  box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.2);
+  transform: translateY(-0.25rem);
+}
+
+svg {
+  background-color: white;
+  border-radius: 0.5rem;
+  width: 100%;
+  height: auto;
+  padding: 0; /* Remove padding to make the map bigger */
+}
+
+.flash-error {
+  background: #dc3545;
+  color: white;
+}
+.flash-success {
+  background: #28a745;
+  color: white;
+}
+
+/* Modal animation for rooms popups */
+#room-modal {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  animation: modalFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  overflow: hidden;
+  max-width: 600px;
+}
+
+
+#modal-room-details span {
+  flex: 1;
+  cursor: default; 
+}
+
+#room-modal .modal-header {
+    background-color: #007bff;
+    color: white;
+    padding: 15px 20px;
+    margin: -25px -25px 15px -25px;
+}
+
+#modal-room-name {
+    font-weight: 600;
+    margin: 0;
+    font-size: 1.3rem;
+    color: white;
+    flex: 1;
+    cursor: default; /* Set cursor to normal */
+}
+
+#modal-room-details {
+    padding: 5px 0;
+}
+
+#modal-room-details div {
+    padding: 10px 0;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: background-color 0.2s;
+}
+
+#modal-room-details div:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+#modal-room-details div:last-child {
+    border-bottom: none;
+}
+
+#modal-room-details strong {
+    color: #007bff;
+    width: 120px;
+    display: inline-block;
+    font-weight: 500;
+    flex: 1;
+    cursor: default; /* Set cursor to normal */
+}
+
+#modal-room-details span {
+    flex: 1;
+}
+
+#close-modal {
+    color: white;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+}
+
+#close-modal:hover {
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 500px) {
+    #room-modal {
+        padding: 20px;
+        width: 95%;
+    }
+    
+    #modal-room-details div {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    #modal-room-details strong {
+        width: auto;
+        margin-bottom: 5px;
+    }
+}
+
+
+
+
+/* New styles for Today's Sessions section */
+#todays-sessions-container {
+  margin-top: 20px;
+  border-top: 2px solid #eee;
+  padding-top: 15px;
+}
+
+#todays-sessions-header {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #2c3e50;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  width: 100%;
+  display: block;
+}
+
+#todays-sessions {
+  max-height: 300px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+
+.session-card {
+  margin-bottom: 15px;
+  padding: 12px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.session-card:hover {
+  background: #f0f7ff;
+}
+
+.session-card div {
+  padding: 4px 0;
+  display: block !important;
+  border: none !important;
+}
+
+.session-card div:hover {
+  background-color: transparent !important;
+}
+
+.session-divider {
+  margin: 10px 0;
+  border: 0;
+  height: 1px;
+  background-color: #e7e7e7;
+}
+
+
+/* Fix width and scrolling issues */
+#room-modal {
+  max-width: 600px !important;
+  width: 90% !important;
+  overflow: visible !important;
+}
+
+/* Ensure the sessions container scrolls properly */
+#modal-room-details > div:last-child > div:last-child {
+  max-height: 300px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* Make sure header displays properly */
+#modal-room-details > div:last-child > h4 {
+  display: block !important;
+  width: 100% !important;
+  text-align: center !important;
+  margin-bottom: 15px !important;
+}
+
+/* Format session cards better */
+#modal-room-details > div:last-child > div > div {
+  margin-bottom: 15px;
+  border-left: 4px solid #007bff !important;
+  display: block !important;
+}
+
+
+
+
+
+
+
+/* Floating Sidebar */
+.floating-sidebar {
+  width: 220px;
+  background: rgba(40, 42, 72, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  position: fixed;
+  left: 20px;
+  top: 90px;
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+  font-size: 40px;
+  color: #6a11cb;
+  margin-right: 15px;
+}
+
+.user-info h5 {
+  color: white;
+  margin: 0 0 5px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.user-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.user-badge.student {
+  background: rgba(106, 17, 203, 0.2);
+  color: #b388ff;
+}
+
+.user-badge.professor {
+  background: rgba(37, 117, 252, 0.2);
+  color: #82b1ff;
+}
+
+.info-section {
+  margin-bottom: 20px;
+}
+
+.info-section h6 {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.85rem;
+}
+
+.info-item i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+}
+
+/* Adjust main content to prevent overlap */
+.container {
+  margin-left: 150px;
+  padding-right: 40px;
+}
+
+/* Responsive behavior */
+@media (max-width: 1200px) {
+  .floating-sidebar {
+    position: static;
+    width: 100%;
+    margin-bottom: 30px;
+  }
+  
+  .container {
+    margin-left: 0;
+  }
+}
+
+

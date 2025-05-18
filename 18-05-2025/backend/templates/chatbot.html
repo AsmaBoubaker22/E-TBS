@@ -1,0 +1,20 @@
+{% extends "theme.html" %} 
+
+{% block title %}Home{% endblock %}
+
+{% block content %} 
+
+<div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <div class="message bot">Hello! How can I help you today? 😊</div>
+        </div>
+        <div class="chat-input">
+            <input type="text" id="chat-input" placeholder="Type your message..." autocomplete="off">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='chatbot.js') }}"></script>
+
+
+
+{% endblock %}

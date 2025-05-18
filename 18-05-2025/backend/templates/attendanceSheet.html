@@ -1,0 +1,699 @@
+{% extends "theme.html" %}
+
+{% block title %}Attendance Sheet{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        body {
+            padding: 20px;
+            font-size: 12pt;
+        }
+        .table {
+            page-break-inside: avoid;
+        }
+        .no-print {
+            display: none;
+        }
+        .table thead th {
+            color: black !important; /* Ensures black text when printing */
+        }
+        textarea {
+            border: none !important;
+            resize: none !important;
+            background: transparent !important;
+        }
+    }
+   
+    .container-fluid {
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        background-color: white;
+    }
+    
+    .table thead.thead-dark th {
+        color: black !important;
+    }
+    
+    textarea {
+        width: 100%;
+        border: 1px solid #ddd;
+        padding: 5px;
+        resize: vertical;
+    }
+    
+    .update-btn,
+    .csv-btn{
+        margin-top: 20px;
+        padding: 10px 25px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    
+    .update-btn:hover {
+        background-color: #45a049;
+    }
+    .csv-btn:hover {
+        background-color: #45a049;
+    }
+    .toast {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        padding: 15px 25px;
+        border-radius: 4px;
+        color: white;
+        font-family: Arial, sans-serif;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        opacity: 0;
+        transform: translateY(-30px);
+        transition: opacity 0.3s, transform 0.3s;
+    }
+    
+    .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .toast.success {
+        background-color: #4CAF50;
+    }
+    
+    .toast.error {
+        background-color: #F44336;
+    }
+
+    .container {
+        margin-left: 280px;
+        padding-right: 40px;
+        padding-top: 40px;
+      }
+</style>
+
+<!-- The view the professor will get if the session is finalized-->
+{% if is_finalized %}
+
+<style>
+    .pdf-btn {
+        background-color: #d9534f;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+    }
+    
+    .pdf-btn:hover {
+        background-color: #c9302c;
+    }
+
+     @media print {
+        .no-print {
+            display: none !important;
+        }
+    }
+    
+    .no-print {
+        display: block;
+    }
+</style>
+
+
+<div class="container-fluid" style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto;">
+    <h2 class="text-center mb-4">Attendance Sheet</h2>
+    
+    {% if session_info %}
+    <div class="mb-4" style="border: 2px solid #000; padding: 15px; background-color: #efefef;">
+        <h4 class="mb-3"><strong>Session Information</strong></h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 16px;">
+            <div style="flex: 1 1 45%;"><strong>Course:</strong> {{ session_info[0] }} - {{ session_info[1] }}</div>
+            <div style="flex: 1 1 45%;"><strong>Professor:</strong> {{ session_info[2] }}</div>
+            <div style="flex: 1 1 45%;"><strong>Date:</strong> {{ session_info[3].strftime('%Y-%m-%d') }}</div>
+            <div style="flex: 1 1 45%;">
+                <strong>Time:</strong> 
+                {{ session_info[4]|string | replace(':00', '') }} - {{ session_info[5]|string | replace(':00', '') }}
+            </div>
+            <div style="flex: 1 1 45%;"><strong>Location:</strong> {{ session_info[6] or 'N/A' }}</div>
+            <div style="flex: 1 1 45%;"><strong>Groups:</strong> {{ session_info[8] or 'ALL' }}</div>  <!-- Added this line -->
+            <div style="flex: 1 1 100%;"><strong>Details:</strong> {{ session_info[7] or 'No details provided' }}</div>
+        </div>
+    </div>
+    {% endif %}
+    
+
+    <div class="table-responsive">
+        <table class="table table-bordered" style="border: 2px solid #000;">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">No.</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">National ID</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">First Name</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Last Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students_attendance %}
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ loop.index }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[0] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[1] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[2] }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        No attendance records found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 20px; text-align: right;">
+        <p>Total: {{ students_attendance|length }} students</p>
+    </div>
+    
+    <!-- Add the Update button -->
+    <div class="text-center no-print">
+        <button class="csv-btn">Download CSV</button>
+        <button class="pdf-btn"  id="downloadPdfBtn">Download PDF</button>
+    </div>
+</div>
+
+
+<!-- Handling the CSV download -->
+<script>
+    document.querySelector('.csv-btn').addEventListener('click', async function() {
+        try {
+            // Generate CSV content (same as before)
+            const rows = document.querySelectorAll('table tbody tr');
+            let csvContent = "No.,National ID,First Name,Last Name\n";
+            
+            rows.forEach(row => {
+                if (row.cells.length === 4) {
+                    csvContent += [
+                        row.cells[0].textContent.trim(),
+                        row.cells[1].textContent.trim(),
+                        row.cells[2].textContent.trim(),
+                        row.cells[3].textContent.trim()
+                    ].join(',') + '\n';
+                }
+            });
+    
+            // Modern File System Access API (Chrome/Edge 86+, Firefox 111+)
+            if ('showSaveFilePicker' in window) {
+                const courseCode = "{{ session_info[0] }}" || 'attendance';
+                const sessionDate = "{{ session_info[3].strftime('%Y-%m-%d') }}" || new Date().toISOString().slice(0,10);
+                
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: `${courseCode}_attendance_${sessionDate}.csv`,
+                        types: [{
+                            description: 'CSV Files',
+                            accept: {'text/csv': ['.csv']}
+                        }]
+                    });
+                    
+                    const writable = await handle.createWritable();
+                    await writable.write(csvContent);
+                    await writable.close();
+                    
+                    showToast('✓ File saved successfully!', true);
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        console.error('Save error:', err);
+                        fallbackSave(csvContent, courseCode, sessionDate);
+                    }
+                }
+            } else {
+                // Fallback for browsers without File System Access API
+                fallbackSave(csvContent, 
+                    "{{ session_info[0] }}" || 'attendance', 
+                    "{{ session_info[3].strftime('%Y-%m-%d') }}" || new Date().toISOString().slice(0,10)
+                );
+            }
+        } catch (error) {
+            showToast('✗ Error: ' + error.message, false);
+        }
+    });
+    
+    // Fallback method
+    function fallbackSave(csvContent, courseCode, sessionDate) {
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${courseCode}_attendance_${sessionDate}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+
+<!-- Handling the PDF download-->
+<script>
+    document.getElementById('downloadPdfBtn').addEventListener('click', async function() {
+        const btn = this;
+        const originalText = btn.innerHTML;
+        
+        try {
+            // Show loading state
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing PDF...';
+            btn.disabled = true;
+            
+            // Hide buttons temporarily
+            document.querySelectorAll('.no-print').forEach(el => {
+                el.style.visibility = 'hidden';
+            });
+            
+            // Get the element to convert
+            const element = document.querySelector('.container-fluid');
+            const courseCode = "{{ session_info[0] }}" || 'attendance';
+            const sessionDate = "{{ session_info[3].strftime('%Y-%m-%d') }}" || new Date().toISOString().slice(0,10);
+            const filename = `${courseCode}_attendance_${sessionDate}.pdf`;
+            
+            // Capture the content
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                logging: true,
+                useCORS: true,
+                scrollY: 0
+            });
+            
+            // Show buttons again
+            document.querySelectorAll('.no-print').forEach(el => {
+                el.style.visibility = 'visible';
+            });
+            
+            // Convert to PDF
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jspdf.jsPDF('p', 'mm', 'a4');
+            const imgWidth = 210; // A4 width in mm
+            const pageHeight = 295; // A4 height in mm
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+            
+            // Modern browsers file picker API
+            if (window.showSaveFilePicker) {
+                try {
+                    const blob = pdf.output('blob');
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: 'PDF Files',
+                            accept: {'application/pdf': ['.pdf']}
+                        }]
+                    });
+                    
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    
+                    showToast('✓ PDF saved successfully!', true);
+                } catch (err) {
+                    if (err.name !== 'AbortError') {
+                        // User cancelled or error occurred - fallback to direct download
+                        pdf.save(filename);
+                    }
+                }
+            } else {
+                // Fallback for browsers without File System Access API
+                pdf.save(filename);
+            }
+            
+        } catch (error) {
+            console.error('PDF generation error:', error);
+            showToast('✗ Error: ' + error.message, false);
+        } finally {
+            // Restore button state
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            document.querySelectorAll('.no-print').forEach(el => {
+                el.style.visibility = 'visible';
+            });
+        }
+    });
+</script>
+
+
+<!-- The view the professor will get if the session is not finalized-->
+{% else %}
+
+
+<div class="container-fluid" style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto;">
+    <h2 class="text-center mb-4">Attendance Sheet</h2>
+    
+    {% if session_info %}
+    <div class="mb-4" style="border: 2px solid #000; padding: 15px; background-color: #efefef;">
+        <h4 class="mb-3"><strong>Session Information</strong></h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 16px;">
+            <div style="flex: 1 1 45%;"><strong>Course:</strong> {{ session_info[0] }} - {{ session_info[1] }}</div>
+            <div style="flex: 1 1 45%;"><strong>Professor:</strong> {{ session_info[2] }}</div>
+            <div style="flex: 1 1 45%;"><strong>Date:</strong> {{ session_info[3].strftime('%Y-%m-%d') }}</div>
+            <div style="flex: 1 1 45%;">
+                <strong>Time:</strong> 
+                {{ session_info[4]|string | replace(':00', '') }} - {{ session_info[5]|string | replace(':00', '') }}
+            </div>
+            <div style="flex: 1 1 45%;"><strong>Location:</strong> {{ session_info[6] or 'N/A' }}</div>
+            <div style="flex: 1 1 45%;"><strong>Groups:</strong> {{ session_info[8] or 'ALL' }}</div>  <!-- Added this line -->
+            <div style="flex: 1 1 100%;"><strong>Details:</strong> {{ session_info[7] or 'No details provided' }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="table-responsive">
+        <table class="table table-bordered" style="border: 2px solid #000;">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">No.</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">National ID</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">First Name</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Last Name</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Address</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Coordinates</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Time</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Comment</th>
+                    <th style="border: 1px solid #000; background-color: #f2f2f2; padding: 8px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students_attendance %}
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ loop.index }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[0] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[1] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[2] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ student[3] }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        {{ student[4]|string }}, {{ student[5]|string }}
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        {{ student[6].strftime('%Y-%m-%d %H:%M:%S') }}
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px;">
+                        <textarea name="comment_{{ student[0] }}" 
+                                data-attendance-id="{{ student[8] }}" 
+                                rows="2">{{ student[7] if student[7] is not none else '' }}</textarea>
+                    </td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        <button class="remove-btn" data-attendance-id="{{ student[8] }}" 
+                                style="background-color: #ff4444; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer;">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" style="border: 1px solid #000; padding: 8px; text-align: center;">
+                        No attendance records found
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div style="margin-top: 20px; text-align: right;">
+        <p>Total: {{ students_attendance|length }} students</p>
+    </div>
+    
+    <!-- Add the Update button -->
+    <div class="text-center no-print">
+        <button class="update-btn">Update Comments</button> 
+        <form action="{{ url_for('public.finalize_attendance', attendance_session_id=attendance_session_id) }}" 
+          method="POST" 
+          onsubmit="return confirmFinalize()"
+          style="display: inline;">
+            <button type="submit" class="finalize-btn" style="background-color: #a76528; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+                <i class="fas fa-lock"></i> Finalize Sheet
+            </button>
+        </form>
+    </div>
+
+    <!-- Add warning message below the buttons -->
+    <div class="finalize-warning" style="background-color: #fff8e1; border-left: 4px solid #ffc107; padding: 12px; margin: 15px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #5d4037; font-weight: 500;">
+            <i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i>
+            Please finalize this attendance sheet when complete to prevent unauthorized changes.
+            This action cannot be undone.
+        </p>
+    </div>
+</div>
+
+
+<!-- The small confirmation for finalizing sheet -->
+<script>
+    function confirmFinalize() {
+        return confirm('❗️ Final confirmation\n\nAre you absolutely sure you want to finalize this attendance sheet?\n\n✅ All data will be locked\n❌ No further changes will be allowed\n\nThis action cannot be undone.');
+    }
+</script>
+    
+
+<!-- inside tthe if statement : Adding absent students in case of error -->
+{% if students_absent %}
+<div class="absent-students-section" style="margin: 30px 0; border-top: 2px solid #eee; padding-top: 20px;">
+    <h4 style="color: #d9534f; margin-bottom: 15px;">
+        <i class="fas fa-user-slash" style="margin-right: 8px;"></i>
+        Add Students Who Couldn't Mark Attendance
+    </h4>
+    <p style="color: #666; font-style: italic; margin-bottom: 15px;">
+        Select students who were present but couldn't mark attendance (e.g., technical issues).
+        Hold Ctrl/Cmd to select multiple students or use the buttons below.
+    </p>
+    
+    <div style="display: flex; gap: 15px; align-items: center;">
+        <select id="absentStudentsSelect" multiple style="flex: 1; padding: 10px; min-height: 120px; border: 1px solid #ddd; border-radius: 4px;">
+            {% for student in students_absent %}
+            <option value="{{ student[0] }}" data-national-id="{{ student[1] }}">
+                {{ student[2] }} {{ student[3] }} (ID: ***{{ student[1][-4:] }})
+            </option>
+            {% endfor %}
+        </select>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button id="addAbsentBtn" style="padding: 8px 15px; background-color: #5bc0de; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-user-plus" style="margin-right: 5px;"></i> Add Selected
+            </button>
+            <button id="toggleAllBtn" style="padding: 8px 15px; background-color: #f0ad4e; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-exchange-alt" style="margin-right: 5px;"></i> Toggle All
+            </button>
+            <button id="clearAllBtn" style="padding: 8px 15px; background-color: #d9534f; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <i class="fas fa-times" style="margin-right: 5px;"></i> Clear All
+            </button>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .absent-students-section {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 5px;
+    }
+    
+    #absentStudentsSelect option {
+        padding: 8px;
+        border-bottom: 1px solid #eee;
+    }
+    
+    #absentStudentsSelect option:hover {
+        background-color: #e9e9e9;
+    }
+    
+    #addAbsentBtn:hover {
+        background-color: #46b8da !important;
+    }
+    
+    #toggleAllBtn:hover {
+        background-color: #ec971f !important;
+    }
+    
+    #clearAllBtn:hover {
+        background-color: #c9302c !important;
+    }
+</style>
+
+
+<script>
+    document.getElementById('toggleAllBtn').addEventListener('click', function() {
+        const select = document.getElementById('absentStudentsSelect');
+        const allSelected = Array.from(select.options).every(option => option.selected);
+        
+        Array.from(select.options).forEach(option => {
+            option.selected = !allSelected;
+        });
+    });
+    
+    document.getElementById('clearAllBtn').addEventListener('click', function() {
+        const select = document.getElementById('absentStudentsSelect');
+        Array.from(select.options).forEach(option => {
+            option.selected = false;
+        });
+    });
+    
+    document.getElementById('addAbsentBtn').addEventListener('click', async function() {
+        const select = document.getElementById('absentStudentsSelect');
+        const selectedOptions = Array.from(select.selectedOptions);
+        
+        if (selectedOptions.length === 0) {
+            showToast('Please select at least one student to add', false);
+            return;
+        }
+    
+        // Get attendance_session_id from URL
+        const sessionId = window.location.pathname.split('/').pop();
+        const studentIds = selectedOptions.map(option => option.value);
+    
+        try {
+            // Add loading state
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+            this.disabled = true;
+    
+            const response = await fetch(`/add_absent_students/${sessionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ student_ids: studentIds })
+            });
+    
+            const result = await response.json();
+            
+            if (result.success) {
+                showToast(`✓ Added ${result.count} students! Refreshing...`, true);
+                // Refresh after 1.5 seconds to let user see the success message
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                showToast('✗ Error: ' + result.message, false);
+                // Reset button state on error
+                this.innerHTML = '<i class="fas fa-user-plus"></i> Add Selected';
+                this.disabled = false;
+            }
+        } catch (error) {
+            showToast('✗ Network error: ' + error.message, false);
+            // Reset button state on error
+            this.innerHTML = '<i class="fas fa-user-plus"></i> Add Selected';
+            this.disabled = false;
+        }
+    });
+
+    // Enable standard multi-select behavior (Ctrl/Cmd + click)
+    document.getElementById('absentStudentsSelect').addEventListener('mousedown', function(e) {
+        e.preventDefault(); // Prevent default to allow normal multi-select behavior
+        
+        const option = e.target;
+        if (option.tagName === 'OPTION') {
+            // Toggle selection state
+            option.selected = !option.selected;
+        }
+    });
+</script>
+{% endif %}
+
+
+<!-- updating comments and the toast alert-->
+<script>
+function showToast(message, isSuccess) {
+    const toast = document.createElement('div');
+    toast.className = `toast ${isSuccess ? 'success' : 'error'}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    // Show the toast
+    setTimeout(() => toast.classList.add('show'), 10);
+    
+    // Remove the toast after 3 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+}
+
+// Update your fetch code to use the toast:
+document.querySelector('.update-btn').addEventListener('click', async function() {
+    const updates = [];
+    const textareas = document.querySelectorAll('textarea[name^="comment_"]');
+    
+    textareas.forEach(textarea => {
+        updates.push({
+            attendance_id: textarea.dataset.attendanceId,
+            comment: textarea.value
+        });
+    });
+
+    try {
+        const response = await fetch('/update_attendance_comments', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ updates })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast('✓ Comments updated successfully!', true);
+        } else {
+            showToast('✗ Error: ' + result.message, false);
+        }
+    } catch (error) {
+        showToast('✗ Failed to update comments: ' + error.message, false);
+    }
+});
+</script>
+
+
+<!-- Removing Students from the List -->
+<script>
+    // Remove Student Functionality
+document.querySelectorAll('.remove-btn').forEach(button => {
+    button.addEventListener('click', async function() {
+        const attendanceId = this.dataset.attendanceId;
+        const row = this.closest('tr');
+        
+        try {
+            const response = await fetch(`/delete_attendance/${attendanceId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+                // Remove the row from the table
+                row.remove();
+                showToast('✓ Student attendance removed successfully!', true);
+                
+                // Update the total count
+                const totalCount = document.querySelectorAll('tbody tr').length;
+                document.querySelector('div[style*="margin-top: 20px"] p').textContent = 
+                    `Total: ${totalCount} students`;
+            } else {
+                showToast('✗ Failed to remove attendance', false);
+            }
+        } catch (error) {
+            showToast('✗ Network error: ' + error.message, false);
+        }
+    });
+});
+</script>
+
+
+
+{% endif%}
+
+
+{% endblock %}

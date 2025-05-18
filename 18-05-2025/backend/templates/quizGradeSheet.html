@@ -1,0 +1,451 @@
+{% extends "theme.html" %}
+
+{% block title %}{{course_code}} Quiz Grades Sheet{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        body {
+            padding: 20px;
+            font-size: 12pt;
+        }
+        .table {
+            page-break-inside: avoid;
+        }
+        .no-print {
+            display: none;
+        }
+        .table thead th {
+            color: black !important;
+        }
+        .grade-input {
+            border: none !important;
+            background: transparent !important;
+        }
+    }
+   
+    .container-fluid {
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        background-color: white;
+        max-width: 1200px;
+        margin: 0 auto;
+        margin-top: 52px;
+        margin-left: 12%;
+        font-family: Arial, sans-serif;
+    }
+    
+    .table thead.thead-dark th {
+        color: black !important;
+        background-color: #c9cbce !important;
+    }
+    
+    .grade-input {
+        width: 80px;
+        border: 1px solid #ddd;
+        padding: 5px;
+        text-align: center;
+    }
+    
+    .update-btn {
+        margin-top: 20px;
+        padding: 10px 25px;
+        background-color: #2c7be5;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    
+    .update-btn:hover {
+        background-color: #1a68d1;
+    }
+    
+    .pdf-btn {
+        background-color: #2c7be5;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+        margin-left: 10px;
+    }
+    
+    .pdf-btn:hover {
+        background-color: #1a68d1;
+    }
+
+    .session-info {
+        border: 2px solid #2c7be5;
+        padding: 15px;
+        background-color: #e4e5e6;
+        margin-bottom: 20px;
+    }
+    
+    .note-cell {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .no-issues {
+        color: #28a745;
+    }
+    .has-issues {
+        color: #dc3545;
+    }
+    .not-submitted {
+        color: #6c757d;
+    }
+     
+    .update-btn,
+    .csv-btn{
+        margin-top: 20px;
+        padding: 10px 25px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    
+    .update-btn:hover {
+        background-color: #45a049;
+    }
+    .csv-btn:hover {
+        background-color: #45a049;
+    }
+    #finalized, #not_finalized, #finalized_buttons, #not_finalized_buttons {
+        display: none;
+    }
+
+        
+    .note-cell {
+        max-width: 200px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position: relative;
+        cursor: pointer;
+    }
+
+    .note-cell:hover {
+        overflow: visible;
+        white-space: normal;
+        z-index: 100;
+        background: white;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        position: relative;
+    }
+</style>
+
+
+
+<!-- Finalized Version -->
+<div class="container-fluid" id="finalized">
+    <h2 class="text-center mb-4">Quiz Grade Sheet</h2>
+    
+    <!-- Quiz Information Section -->
+    <div id="quizDetailsContainerFinalized" class="session-info">
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading quiz details...</p>
+        </div>
+    </div>
+
+    <!-- Grades Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered" style="border: 2px solid #2c7be5;">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">No.</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">National ID</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">First Name</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Last Name</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Group</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Grade</th>
+                </tr>
+            </thead>
+            <tbody id="gradesTableBodyFinalized">
+                <tr>
+                    <td colspan="6" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading grades data...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Not Finalized Version -->
+<div class="container-fluid" id="not_finalized">
+    <h2 class="text-center mb-4">Quiz Grade Sheet</h2>
+    
+    <!-- Quiz Information Section -->
+    <div id="quizDetailsContainer" class="session-info">
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading quiz details...</p>
+        </div>
+    </div>
+
+    <!-- Grades Table -->
+    <div class="table-responsive">
+        <table class="table table-bordered" style="border: 2px solid #2c7be5;">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">No.</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">National ID</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">First Name</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Last Name</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Group</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Note</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Grade</th>
+                    <th style="border: 1px solid #dee2e6; padding: 8px;">Update Grade</th>
+                </tr>
+            </thead>
+            <tbody id="gradesTableBodyNotFinalized">
+                <tr>
+                    <td colspan="8" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading grades data...</p>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+ 
+
+<!-- Button Containers -->
+<div class="text-center no-print" id="finalized_buttons"> 
+    <button class="csv-btn">Download CSV</button>
+    <button class="pdf-btn" id="downloadPdfBtn">Download PDF</button>
+</div>
+
+<div class="text-center no-print" id="not_finalized_buttons"> 
+    <button id="updateGradesBtn" class="update-btn" disabled>
+        <i class="fas fa-save me-2"></i> Update Grades
+    </button>
+    <form action="{{ url_for('public.finalize_quiz', quiz_id=quiz_id, course_professor_id=course_professor_id, course_code=course_code) }}" 
+          method="POST" 
+          onsubmit="return confirmFinalize()"
+          style="display: inline;">
+            <button type="submit" class="finalize-btn" style="background-color: #a76528; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-left: 10px;">
+                <i class="fas fa-lock"></i> Finalize Sheet
+            </button>
+    </form>
+</div>
+
+
+<div style="height: 20px;"></div>
+
+
+
+
+<!-- The small confirmation for finalizing sheet -->
+<script>
+    function confirmFinalize() {
+        return confirm('❗️ Final confirmation\n\nAre you absolutely sure you want to finalize this attendance sheet?\n\n✅ All data will be locked\n❌ No further changes will be allowed\n\nThis action cannot be undone.');
+    }
+</script>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Extract IDs from URL or template variables
+    const quizId = {{ quiz_id }};
+    const courseProfessorId = {{ course_professor_id }};
+    const courseCode = "{{ course_code }}";
+    
+    let quizData = null;
+    let studentsData = null;
+    let isFinalized = false;
+
+    // Function to show/hide containers based on finalized status
+    function toggleFinalizedContainers() {
+        console.log('Toggling containers. isFinalized:', isFinalized);
+        if (isFinalized) {
+            console.log('Showing finalized version');
+            document.getElementById('finalized').style.display = 'block';
+            document.getElementById('finalized_buttons').style.display = 'block';
+            document.getElementById('not_finalized').style.display = 'none';
+            document.getElementById('not_finalized_buttons').style.display = 'none';
+        } else {
+            console.log('Showing non-finalized version');
+            document.getElementById('finalized').style.display = 'none';
+            document.getElementById('finalized_buttons').style.display = 'none';
+            document.getElementById('not_finalized').style.display = 'block';
+            document.getElementById('not_finalized_buttons').style.display = 'block';
+        }
+    }
+
+    // Function to fetch quiz details
+    async function fetchQuizDetails() {
+    try {
+        const response = await fetch(`/get_quiz_details/${quizId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            quizData = data.quiz;
+            isFinalized = data.is_finalized; // This was the key missing piece
+            console.log('Quiz finalized status:', isFinalized); // Debug log
+            toggleFinalizedContainers();
+            renderQuizDetails();
+        } else {
+            throw new Error(data.message || 'Failed to load quiz details');
+        }
+    } catch (error) {
+        console.error('Error fetching quiz details:', error);
+        const containerId = isFinalized ? 'quizDetailsContainerFinalized' : 'quizDetailsContainer';
+        document.getElementById(containerId).innerHTML = `
+            <div class="alert alert-danger m-3">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Failed to load quiz details: ${error.message}
+            </div>
+        `;
+    }
+}
+    
+    // Function to fetch student grades
+    async function fetchStudentGrades() {
+        try {
+            const response = await fetch(`/get_all_quiz_grades/${quizId}/${courseProfessorId}/${courseCode}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                studentsData = data.students;
+                renderGradesTable();
+            } else {
+                throw new Error(data.message || 'Failed to load grades');
+            }
+        } catch (error) {
+            console.error('Error fetching student grades:', error);
+            const tbodyId = isFinalized ? 'gradesTableBodyFinalized' : 'gradesTableBody';
+            document.getElementById(tbodyId).innerHTML = `
+                <tr>
+                    <td colspan="${isFinalized ? '7' : '8'}" class="text-center py-4 text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Failed to load grades: ${error.message}
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    // Render quiz details
+    function renderQuizDetails() {
+        const containerId = isFinalized ? 'quizDetailsContainerFinalized' : 'quizDetailsContainer';
+        const container = document.getElementById(containerId);
+        if (!quizData) return;
+        
+        container.innerHTML = `
+            <h4 class="mb-3"><strong>Quiz Information</strong></h4>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 16px;">
+                <div style="flex: 1 1 45%;"><strong>Title:</strong> ${quizData.title}</div>
+                <div style="flex: 1 1 45%;"><strong>Description:</strong> ${quizData.description || 'N/A'}</div>
+                <div style="flex: 1 1 45%;"><strong>Date:</strong> ${new Date(quizData.formatted_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</div>
+                <div style="flex: 1 1 45%;"><strong>Duration:</strong> ${quizData.duration} minutes</div>
+                <div style="flex: 1 1 45%;"><strong>Total Grade:</strong> ${quizData.total_grade} points</div>
+                <div style="flex: 1 1 45%;"><strong>Questions:</strong> ${quizData.number_of_questions}</div>
+            </div>
+        `;
+    }
+
+    // Render grades table
+    function renderGradesTable() {
+        const tbodyId = isFinalized ? 'gradesTableBodyFinalized' : 'gradesTableBodyNotFinalized';
+        const tbody = document.getElementById(tbodyId);
+        
+        if (!studentsData || studentsData.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="${isFinalized ? '7' : '8'}" class="text-center py-4">
+                        No student grades found for this quiz.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        // Sort students by last name
+        const sortedStudents = [...studentsData].sort((a, b) => a.last_name.localeCompare(b.last_name));
+        
+        tbody.innerHTML = sortedStudents.map((student, index) => {
+            let noteClass = '';
+            let noteDisplay = '';
+            
+            if (student.note === "Submitted without issues") {
+                noteClass = 'no-issues';
+                noteDisplay = '<i class="fas fa-check-circle"></i> Submitted';
+            } else if (student.note === "Did not submit") {
+                noteClass = 'not-submitted';
+                noteDisplay = '<i class="fas fa-times-circle"></i> Not submitted';
+            } else {
+                noteClass = 'has-issues';
+                noteDisplay = student.note || '';
+            }
+            
+            if (isFinalized) {
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.national_id ? '****' + student.national_id.slice(-4) : 'N/A'}</td>
+                        <td>${student.first_name || '-'}</td>
+                        <td>${student.last_name || '-'}</td>
+                        <td>${student.group_id || '-'}</td>
+                        <td class="fw-bold">${student.grade !== undefined ? student.grade : '-'}</td>
+                    </tr>
+                `;
+            } else {
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.national_id ? '****' + student.national_id.slice(-4) : 'N/A'}</td>
+                        <td>${student.first_name || '-'}</td>
+                        <td>${student.last_name || '-'}</td>
+                        <td>${student.group_id || '-'}</td>
+                        <td class="note-cell ${noteClass}">${noteDisplay}</td>
+                        <td class="fw-bold">${student.grade !== undefined ? student.grade : '-'}</td>
+                        <td><input type="number" value="${student.grade !== undefined ? student.grade : ''}" min="0" max="${quizData ? quizData.total_grade : 100}" step="0.5"></td>
+                    </tr>
+                `;
+            }
+        }).join('');
+        
+        // Enable update button if we have data and not finalized
+        if (studentsData.length > 0 && !isFinalized) {
+            document.getElementById('updateGradesBtn').disabled = false;
+        }
+    }
+
+
+    // Initial data loading
+    Promise.all([fetchQuizDetails(), fetchStudentGrades()])
+        .catch(error => console.error('Error loading initial data:', error));
+        
+    // PDF download button functionality
+    document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+        window.print();
+    });
+
+    
+});
+</script>
+{% endblock %}

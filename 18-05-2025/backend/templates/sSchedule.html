@@ -1,0 +1,342 @@
+{% extends "theme.html" %}
+
+{% block title %}Schedule{% endblock %}
+
+{% block content %}
+
+<style>
+    /* Keep your theme's existing styles */
+    .content-container {
+        padding-top: 30px;
+        padding-bottom: 50px;
+    }
+    
+    .timetable-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: white;
+    }
+    
+    .timetable-header {
+        background: linear-gradient(135deg, #2c1199 , #f522b6);
+        color: white;
+        padding: 25px;
+        text-align: center;
+    }
+    
+    .timetable-title {
+        margin: 0;
+        font-weight: 600;
+        font-size: 24px;
+    }
+    
+    .timetable {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: white;
+        table-layout: fixed;
+    }
+    
+    .timetable th {
+        background-color: #fde3f7;
+        color: #f522b6;
+        padding: 15px;
+        text-align: center;
+        font-weight: 600;
+        border-bottom: 2px solid #fbbbe5;
+    }
+    
+    .timetable td {
+        padding: 15px;
+        text-align: center;
+        border: 1px solid #f8d1ea;
+        height: 80px;
+        transition: all 0.2s ease;
+    }
+    
+    .timetable td:hover {
+        background-color: #fff5ff;
+        transform: scale(1.02);
+    }
+    
+    .time-column {
+        background-color: #fde3f7;
+        font-weight: 500;
+        color: #f522b6;
+        width: 12%;
+    }
+    
+    .day-column {
+        width: 14.6%; /* Equal width for all days */
+    }
+    
+    .empty-slot {
+        background-color: #fffafe;
+        color: #8c789c;
+        font-style: italic;
+        font-size: 14px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .timetable-container {
+            margin: 20px 15px;
+            border-radius: 8px;
+        }
+        
+        .timetable td {
+            padding: 10px;
+            height: 70px;
+            font-size: 14px;
+        }
+        
+        .timetable th {
+            padding: 12px;
+            font-size: 14px;
+        }
+    }
+    
+    .course-slot {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .course-slot:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        z-index: 10;
+    }
+    
+    .course-name {
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .course-slot:hover .course-name {
+        -webkit-line-clamp: unset;
+        background: white;
+        padding: 4px;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 4px -4px;
+    }
+    
+    /* Modern "card lift" effect */
+    .course-slot::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .course-slot:hover::before {
+        opacity: 1;
+    }
+    
+    /* Pulse animation for attention */
+    @keyframes gentlePulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.01); }
+        100% { transform: scale(1); }
+    }
+    
+    .course-slot:hover {
+        animation: gentlePulse 1.5s ease infinite;
+    }
+        .course-slot {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .course-slot:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+        
+        /* Modern "card lift" effect */
+        .course-slot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .course-slot:hover::before {
+            opacity: 1;
+        }
+        
+        /* Pulse animation for attention */
+        @keyframes gentlePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.01); }
+            100% { transform: scale(1); }
+        }
+        
+        .course-slot:hover {
+            animation: gentlePulse 1.5s ease infinite;
+        }
+        
+        /* Course name styling - removed the hover effect */
+        .course-name {
+            font-size: 0.9em;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .container {
+            margin-left: 280px;
+            padding-right: 40px;
+          }
+</style>
+
+<div class="content-container">
+    <div class="timetable-container">
+        <div class="timetable-header">
+            <h1 class="timetable-title">Courses Schedule</h1>
+        </div>
+        <table class="timetable">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th class="day-column">Monday</th>
+                    <th class="day-column">Tuesday</th>
+                    <th class="day-column">Wednesday</th>
+                    <th class="day-column">Thursday</th>
+                    <th class="day-column">Friday</th>
+                    <th class="day-column">Saturday</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set time_slots = [
+                    ('8:30 - 10:00', '08:30:00', '10:00:00'),
+                    ('10:00 - 11:30', '10:00:00', '11:30:00'),
+                    ('11:30 - 13:00', '11:30:00', '13:00:00'),
+                    ('13:30 - 15:00', '13:30:00', '15:00:00'),
+                    ('15:00 - 16:30', '15:00:00', '16:30:00')
+                ] %}
+                
+                {% set days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                
+                {% for time_slot in time_slots %}
+                <tr>
+                    <td class="time-column">{{ time_slot[0] }}</td>
+                    
+                    {% for day in days %}
+                        {% set cell_content = [] %}
+                        
+                        {# Check all courses for sessions matching this day #}
+                        {% for course in courses %}
+                            {% for session in course.course_sessions %}
+                                {% if session.day == day %}
+                                    {# Convert times to comparable format #}
+                                    {% set session_start = session.start.split(':') %}
+                                    {% set session_end = session.end.split(':') %}
+                                    {% set slot_start = time_slot[1].split(':') %}
+                                    {% set slot_end = time_slot[2].split(':') %}
+                                    
+                                    {# Calculate time in minutes for comparison #}
+                                    {% set session_start_min = session_start[0]|int * 60 + session_start[1]|int %}
+                                    {% set session_end_min = session_end[0]|int * 60 + session_end[1]|int %}
+                                    {% set slot_start_min = slot_start[0]|int * 60 + slot_start[1]|int %}
+                                    {% set slot_end_min = slot_end[0]|int * 60 + slot_end[1]|int %}
+                                    
+                                    {# Filter out invalid sessions (before 8:30 or after 16:30) #}
+                                    {% if session_start_min >= 8*60+30 and session_end_min <= 16*60+30 %}
+                                    
+                                        {# Check if this time slot is within the session duration #}
+                                        {% if (session_start_min <= slot_start_min and session_end_min >= slot_end_min) or
+                                              (session_start_min >= slot_start_min and session_start_min < slot_end_min) or
+                                              (session_end_min > slot_start_min and session_end_min <= slot_end_min) %}
+                                            
+                                            {# Only add if not already in cell_content #}
+                                            {% set session_exists = false %}
+                                            {% for item in cell_content %}
+                                                {% if item.course_code == course.course_code and 
+                                                      item.start == session.start and 
+                                                      item.end == session.end %}
+                                                    {% set session_exists = true %}
+                                                {% endif %}
+                                            {% endfor %}
+                                            
+                                            <!-- In your tbody section, modify the cell_content.append part: -->
+                                            {% if not session_exists %}
+                                            {% set _ = cell_content.append({
+                                                'course_code': course.course_code,
+                                                'course_name': course.course_name,
+                                                'level': course.level,
+                                                'session_type': course.session_type,
+                                                'classroom': session.classroom,
+                                                'group': session.group,  
+                                                'professor_name': course.professor_name,  
+                                                'start': session.start,
+                                                'end': session.end
+                                            }) %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+                        {% endfor %}
+                        
+                        {# Display the cell content #}
+                        <td class="day-column {% if not cell_content %}empty-slot{% endif %}">
+                            {% if cell_content %}
+                                {% for item in cell_content %}
+                                <div class="course-slot" style="margin-bottom: 8px; padding: 8px; background-color: #fce1fe ; border-radius: 5px; border-left: 4px solid {% if item.session_type == 'Lecture' %}#4caf50{% else %}#ff9800{% endif %};">
+                                    <strong>{{ item.course_code }}</strong>
+                                    <div class="course-name" title="{{ item.course_name }}">
+                                        {{ item.course_name }}
+                                    </div>
+                                    <div style="font-size: 0.8em; color: #555;">
+                                        <span class="badge" style="background-color: {% if item.session_type == 'Lecture' %}#4caf50{% else %}#ff9800{% endif %}; color: white; padding: 2px 4px; border-radius: 3px;">
+                                            {{ item.session_type }}
+                                        </span>
+                                        <br>
+                                        <i class="fas fa-map-marker-alt"></i> {{ item.classroom }}
+                                        <br>
+                                        <i class="fas fa-chalkboard-teacher"></i> {{ item.professor_name }}
+                                        <br>
+                                        <i class="fas fa-users"></i> {{ item.group }}
+                                        {% if item.start != time_slot[1] or item.end != time_slot[2] %}
+                                        <br>
+                                        <small>
+                                            ({{ "%02d:%02d"|format(item.start.split(':')[0]|int, item.start.split(':')[1]|int) }} - 
+                                            {{ "%02d:%02d"|format(item.end.split(':')[0]|int, item.end.split(':')[1]|int) }})
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

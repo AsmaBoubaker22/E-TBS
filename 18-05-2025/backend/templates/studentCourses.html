@@ -1,0 +1,71 @@
+{% extends "theme.html" %}
+
+{% block title %}My Courses{% endblock %}
+
+{% block content %}
+<style>
+    .container * {
+        cursor: default !important;
+    }
+
+    .btn, [onclick] {
+        cursor: pointer !important;
+    }
+</style>
+
+<div class="container my-5">
+    <h2 class="mb-5 text-center fw-bold" style="color: #e0e1e4; font-size: 2.5rem; letter-spacing: -0.5px;">
+        My Courses
+    </h2>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        {% for course in courses %}
+        <div class="col">
+            <div class="card h-100 border-0 overflow-hidden" 
+                 style="border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: transform 0.3s ease, box-shadow 0.3s ease;">
+                
+                <div class="card-header p-4" 
+                     style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%);">
+                    <h5 class="mb-0 text-white fw-bold">{{ course.course_code }}</h5>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <span class="badge bg-white rounded-pill px-3 py-1" style="color: #2c1199 ;">{{ course.level }}</span>
+                        <span class="text-white">{{ course.session_type }}</span>
+                    </div>
+                </div>
+
+                <p hidden>Professor ID: {{ course.course_professor_id }}</p>
+
+                <div class="card-body p-4" style="background-color: #f8fafc;">
+                    <h6 class="card-title fw-bold mb-2" style="color: #2c3e50; font-size: 1.25rem;">
+                        {{ course.course_name }}
+                    </h6>
+                    
+                    <p class="mb-2" style="font-size: 0.9rem; color: #6c757d;">
+                        👨‍🏫 <strong>{{ course.professor_name }}</strong>
+                    </p>
+
+                    <!-- Single Group Display -->
+                    <div class="mb-3">
+                        <h6 class="fw-semibold mb-2" style="color: #6c757d; font-size: 0.85rem;">GROUP</h6>
+                        <span class="badge bg-light text-dark rounded-pill px-3 py-1 border" style="font-weight: 500;">
+                            {{ course.course_sessions[0].group }} <!-- Display only the first group's value -->
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="card-footer bg-white border-0 p-4 d-flex justify-content-end">
+                    <a href="{{ url_for('public.studentCourseDetails', course_code=course.course_code, professor_id=course.course_professor_id) }}" 
+                    class="btn btn-sm px-4 py-2 rounded-pill" 
+                    style="background: linear-gradient(135deg, #2c1199 0%, #f522b6  100%); color: white; text-decoration: none;">
+                        View Details
+                    </a>
+
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

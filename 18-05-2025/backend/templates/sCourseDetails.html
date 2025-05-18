@@ -1,0 +1,1346 @@
+{% extends "theme.html" %}
+
+{% block title %}{{ course.course_name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Set default cursor for everything in this template */
+    .container * {
+        cursor: default !important;
+    }
+    
+    /* Make buttons show pointer cursor */
+    .btn, [onclick] {
+        cursor: pointer !important;
+    }
+    .mark-btn {
+        color: #2575fc;
+        border: 1px solid #2575fc;
+        background-color: transparent;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .mark-btn:hover {
+        background-color: #2575fc;
+        color: #fff;
+        border-color: #fff;
+    }
+
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+    }
+    
+    .present-badge {
+        background-color: #e6f7ee;
+        color: #10b759;
+        border: 1px solid #a8e6bf;
+    }
+    
+    .absent-badge {
+        background-color: #feecec;
+        color: #ff4d4f;
+        border: 1px solid #ffb3b3;
+    }
+    
+    .status-badge i {
+        font-size: 1rem;
+    }
+    
+    /* a more compact version for mobile */
+    @media (max-width: 768px) {
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+        }
+        .status-badge i {
+            font-size: 0.9rem;
+        }
+    }
+
+    /* Attendance Modal fixing scrolling and other styling  */
+    #attendanceModal .modal-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #attendanceModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    /* Sticky table header */
+    #attendanceModal .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8fafc;
+        z-index: 10;
+    }
+
+    /* Custom scrollbar matching the blue gradient */
+    #attendanceModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #attendanceModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: rgba(37, 117, 252, 0.3);
+        border-radius: 3px;
+    }
+
+    #attendanceModal .modal-body::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+    }
+
+    /* styling inside the discussion chat */
+    
+    /* Smooth scroll for chat */
+    #chatContainer {
+        scroll-behavior: smooth;
+    }
+
+    /* Message bubbles */
+    .bg-light {
+        background-color: #f1f3f5 !important;
+    }
+    #discussionModal {
+        --professor-color: #2575fc;
+        --student-color: #6a11cb;
+        --chat-bg: #f8fafc;
+        --input-bg: #f1f3f5;
+        --animation-duration: 0.3s;
+    }
+    
+    /* Modal container */
+    #discussionModal .modal-content {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all var(--animation-duration) ease-out;
+    }
+    
+    #discussionModal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    
+
+    /* Chat container */
+    #chatContainer {
+        scroll-behavior: smooth;
+        background-color: var(--chat-bg);
+        background-image: 
+            linear-gradient(var(--chat-bg) 30%, rgba(248, 250, 252, 0)),
+            linear-gradient(rgba(248, 250, 252, 0), var(--chat-bg) 70%);
+        background-attachment: local, local;
+        background-repeat: no-repeat;
+        background-size: 100% 40px, 100% 40px;
+        background-position: top, bottom;
+    }
+    
+    /* Message bubbles */
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        margin-bottom: 12px;
+        position: relative;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all var(--animation-duration) ease-out;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .message-bubble.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .professor-bubble {
+        background-color: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+        border: 1px solid #e9ecef;
+        margin-right: auto;
+    }
+    
+    .student-bubble {
+        background: linear-gradient(135deg, var(--student-color) 0%, #2575fc 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+        margin-left: auto;
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        display: block;
+        text-align: right;
+        margin-top: 4px;
+    }
+    
+    /* Input area - fixed positioning */
+    .input-group {
+        position: relative;
+    }
+    
+    #messageInput {
+        transition: all 0.2s ease;
+        padding: 12px 50px 12px 20px;
+        background-color: var(--input-bg) !important;
+        width: 100%;
+    }
+    
+    #messageInput:focus {
+        box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.2);
+    }
+    
+    #sendMessageBtn {
+        transition: all 0.2s ease;
+        width: 46px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc  100%);
+        color: white;
+        border: none;
+    }
+    
+    #sendMessageBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(17, 153, 142, 0.3);
+    }
+    
+    /* Loading animation */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    #chatLoading {
+        animation: fadeIn 0.5s ease;
+    }
+    
+    /* Scrollbar styling */
+    #chatContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #chatContainer::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    #chatContainer::-webkit-scrollbar-thumb {
+        background: rgba(17, 153, 142, 0.3);
+        border-radius: 3px;
+    }
+    
+    #chatContainer::-webkit-scrollbar-thumb:hover {
+        background: rgba(17, 153, 142, 0.5);
+    }
+    /* Custom scrollbar for chat */
+    #chatContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chatContainer::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    #chatContainer::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    .message-bubble {
+        transition: all 0.3s ease;
+    }
+    
+    .message-bubble.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    #chatMessages {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    /* Ensure new messages are immediately visible */
+    #chatMessages .message-bubble {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* For animated messages (when loading history) */
+    #chatMessages .message-bubble:not(.show) {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+
+    /*line break*/
+    .announcement-content {
+        white-space: pre-line;
+    }
+
+    /* for quizzes*/
+    .hover-scale:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+    .quiz-status.upcoming {
+        background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%);
+        color: white;
+    } 
+    .quiz-status.active {
+        background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
+        color: #212529;
+    }
+    .quiz-status.completed {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    .quiz-actions .btn {
+        min-width: 100px;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .quiz-actions .btn:hover {
+        transform: translateY(-1px);
+    }
+    .quiz-card:hover:after {
+        content: none;
+        animation: none;
+    }
+
+    /* view grade*/
+    .grade-circle {
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+    }
+
+    .grade-circle:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 25px rgba(0,0,0,0.2);
+    }
+
+    .progress {
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: #f0f0f0;
+    }
+
+    .progress-bar {
+        transition: width 0.6s ease;
+    }
+</style>
+
+<!-- Course Details --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%);  border-radius: 16px 16px 0 0;">
+            <h1 class="mb-0">{{ course.course_name }}</h1>
+            <div class="d-flex gap-3 mt-3">
+                <span class="badge bg-white rounded-pill px-3 py-1" style="color: #2c1199;">{{ course.course_code }}</span>
+                <span class="badge bg-white rounded-pill px-3 py-1" style="color: #2c1199;">{{ course.level }}</span>
+                <span class="badge bg-white rounded-pill px-3 py-1" style="color: #2c1199;">{{ course.session_type }}</span>
+            </div>
+        </div>
+        
+        <div class="card-body p-5">
+            <!-- Professor Information -->
+            <div class="mb-4">
+                <h3 class="fw-bold mb-3" style="color: #051267; font-size: 1.5rem;">
+                    👨‍🏫 Professor: <span style="color: #f522b6;">{{ course.professor_name }}</span>
+                </h3>
+            </div>
+
+            <!-- Sessions Schedule -->
+            <h3 class="mb-4" style="color: #051267;">Sessions Schedule</h3>
+            {% for session in course.course_sessions %}
+            <div class="mb-4 p-4 border rounded-3" style="background-color: #f8fafc;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        {{ session.day }} from {{ session.start }} to {{ session.end }}
+                    </h5>
+                    <span class="badge rounded-pill px-3 py-2" 
+                          style="background: linear-gradient(135deg,  #2c1199 0%, #f522b6 100%); color: white;">
+                        <i class="fas fa-door-open me-1"></i> Room {{ session.classroom }}
+                    </span>
+                    
+                </div>
+                
+                <div class="mt-3">
+                    <h6 class="d-inline-block me-2" style="color: #6c757d;">
+                        <i class="fas fa-users me-1"></i> Group:
+                    </h6>
+                    <span class="badge bg-light text-dark rounded-pill px-3 py-1 border" style="font-weight: 500;">
+                        {{ session.group }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+<!-- Course functionalities------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-3 text-white" style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%); border-radius: 16px 16px 0 0;">
+        </div>
+        
+        <div class="card-body p-4">
+            <div class="row g-3">  
+                <!-- Attendance -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg,  #2575fc 0%, #11998e 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                        <i class="fas fa-clipboard-list me-2"></i> Attendance
+                    </button>
+                </div>
+                
+                <!-- Discussion -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#discussionModal">
+                        <i class="fas fa-comments me-2"></i> Discussion
+                    </button>
+                </div>
+                
+                <!-- Course Chat-bot -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+                        <i class="fas fa-robot me-2"></i> Course Chat-bot
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Attendance Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Attendance Sessions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <div class="p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead style="color: #0e3069; position: sticky; top: 0; background-color: #f8fafc; z-index: 1;">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Location</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceSessionsContainer">
+                                <!-- Sessions will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noSessionsMessage" class="text-center py-4">
+                        <i class="fas fa-clipboard text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-3">No attendance sessions found</p>
+                    </div>
+                </div>
+            </div>
+           
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0" style="flex-shrink: 0;">
+                <!-- Empty footer as per your original code -->
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mini Attendance Confirmation Modal -->
+<div class="modal fade" id="attendanceConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-user-check me-1" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Mark attendance in this session?</h5>
+          <p class="small text-muted">This action cannot be undone</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-warning"id="attendanceConfirmBtn">
+              Register
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<!-- Student Discussion Modal -->
+<div class="modal fade" id="discussionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <div class="d-flex align-items-center w-100">
+                    
+                    <h5 class="modal-title mb-0 fw-bold flex-grow-1">
+                        <i class="fas fa-chalkboard-teacher me-2"  style="margin-right: 10px;"></i>Discussion with Professor
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+                        
+            <!-- Modal Body - Chat Area -->
+            <div class="modal-body p-0 d-flex flex-column" style="overflow: hidden;">
+                <div id="chatLoading" class="text-center py-5" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="spinner-grow text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading messages...</p>
+                </div>
+                
+                <div id="chatContainer" style="display: none; flex: 1; overflow-y: auto;">
+                    <div id="chatMessages" class="p-4"></div>
+                </div>
+                
+                <!-- Empty state with Start Discussion button -->
+                <div id="noDiscussionContainer" class="text-center py-5" style="display: none; flex: 1;">
+                    <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No discussion started yet</h5>
+                    <button class="btn mt-3 px-4 py-2 rounded-pill" 
+                            style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                        Start Discussion
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message Input Area (hidden when no discussion exists) -->
+            <div id="messageInputContainer" class="modal-footer bg-white p-3 border-top" style="flex-shrink: 0; display: none;">
+                <div class="w-100 position-relative">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" class="form-control rounded-pill border-0" 
+                               placeholder="Type your message..." style="background-color: #f1f3f5;">
+                        <button class="btn rounded-pill ms-2" id="sendMessageBtn"
+                                style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Announcements ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%); border-radius: 16px 16px 0 0;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-bullhorn me-2" style="margin-right: 10px;"></i>Announcements</h3>
+                <span class="badge bg-light text-primary rounded-pill" id="announcementCount">0</span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            
+            <!-- Announcements List -->
+            <div id="announcementsContainer" class="mt-4">
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-bullhorn fa-3x mb-3"></i>
+                    <h5>No announcements yet</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- QUIZ MODAL --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%); border-radius: 16px 16px 0 0;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-clipboard-list me-2" style="margin-right: 10px;"></i>Quizzes</h3>
+                <span class="badge bg-light text-primary rounded-pill" id="quizCount">0</span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Quizzes List Container -->
+            <div id="quizzesContainer" class="mt-4">
+                <!-- Loading spinner -->
+                <div id="loadingSpinner" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading quizzes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quiz Item Template (Hidden, will be cloned for each quiz) -->
+<div id="quizTemplate" class="d-none">
+    <div class="card mb-4 border-1 shadow hover-scale quiz-card" style="border-radius: 12px; border-left: 4px solid; transition: transform 0.2s ease-in-out;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge rounded-pill px-3 py-2 ms-3 quiz-status"></span>
+                        <div style="width: 10px;"></div>
+                        <h4 class="quiz-title mb-0" style="color: #3a0ca3;"></h4>
+                    </div>
+                    
+                    <p class="quiz-description text-muted mb-3"></p>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="far fa-calendar-alt me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-date"></span>
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="far fa-clock me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-time"></span>
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="fas fa-stopwatch me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-duration"></span> min
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="fas fa-star me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-grade"></span> pts
+                        </span>
+                    </div>
+                </div>
+
+                <div class="quiz-actions d-flex flex-column gap-2 ms-3">
+                    <!-- Buttons will be inserted here based on status -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Grade Modal Template -->
+<div id="gradeModal" class="modal fade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 10px; overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, #2c1199 0%, #f522b6 100%); color: white;">
+                <h5 class="modal-title">Your Quiz Grade</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="spinner-border text-primary mb-3" id="gradeSpinner" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <div id="gradeContent" style="display: none;">
+                    <div class="grade-display mb-4">
+                        <div class="grade-circle mx-auto mb-3" style="width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(135deg, #f46b45 0%, #eea849 100%); display: flex; align-items: center; justify-content: center;">
+                            <h2 class="text-white mb-0" id="studentGrade">0</h2>
+                        </div>
+                        <h4 class="mb-1">Your Score</h4>
+                        <p class="text-muted">Out of <span id="totalGrade">0</span> points</p>
+                    </div>
+                    <div class="progress mb-3" style="height: 10px;">
+                        <div id="gradeProgress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="gradeError" class="alert alert-danger" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- SCRIPTSSSSSS ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+<!-- Attendance Sessions Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize modals outside the event listener
+        const attendanceConfirmModal = new bootstrap.Modal(document.getElementById('attendanceConfirmModal'));
+        let currentSessionIdToAttend = null;
+
+        document.getElementById('attendanceModal').addEventListener('show.bs.modal', function () {
+            const courseProfessorId = {{ course.course_professor_id }};
+            const studentGroup = "{{ course.course_sessions[0].group }}"; // Get student's group
+            const container = document.getElementById('attendanceSessionsContainer');
+            const emptyMsg = document.getElementById('noSessionsMessage');
+            
+
+            const loadSessions = () => {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+
+                fetch(`/get_attendance_sessions_S/${courseProfessorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.sessions.length > 0) {
+                            // Filter sessions to only those that match student's group or are ALL
+                            const filteredSessions = data.sessions.filter(session => {
+                                return session.group_codes === 'ALL' || 
+                                    session.group_codes.split(', ').includes(studentGroup);
+                            });
+
+                            if (filteredSessions.length > 0) {
+                                emptyMsg.style.display = 'none';
+                                renderSessions(filteredSessions);
+                                setupAttendHandlers();
+                            } else {
+                                emptyMsg.style.display = 'block';
+                            }
+                        }
+                    })
+                    .catch(console.error);
+            };
+
+            const renderSessions = (sessions) => {
+                sessions.forEach(session => {
+                    const now = new Date();
+                    const currentTime = now.toTimeString().substring(0, 8);
+                    const currentDate = now.toISOString().split('T')[0];
+            
+                    const isActiveSession = !session.closed &&
+                        session.formatted_date === currentDate &&
+                        currentTime >= session.start_time &&
+                        currentTime <= session.end_time;
+            
+                    const isUpcoming = !session.closed &&
+                        (session.formatted_date > currentDate ||
+                        (session.formatted_date === currentDate && currentTime < session.start_time));
+            
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="position-relative">
+                            ${session.formatted_date}
+                            ${session.details ? `
+                                <div class="session-details-tooltip">
+                                    <i class="fas fa-info-circle ms-2 text-muted"></i>
+                                    <div class="details-content">${session.details}</div>
+                                </div>` : ''}
+                        </td>
+                        <td>${session.start_time} - ${session.end_time}</td>
+                        <td>${session.location}</td>
+                        <td>
+                            <span class="badge ${session.closed ? 'bg-success' : isActiveSession ? 'bg-warning' : 'bg-warning'}">
+                                ${session.closed ? 'Finished' : isActiveSession ? 'Happening Now' : 'Upcoming'}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-3">
+                                ${session.closed ? `
+                                    ${session.present ? ` 
+                                        <span style="color: #10b759; font-weight: bold;">Present</span>
+                                    ` : ` 
+                                        <span style="color: #ff4d4f; font-weight: bold;">Absent</span>
+                                    `}
+                                ` : isActiveSession ? `
+                                    ${session.present ? ` 
+                                        <span style="color: #10b759; font-weight: bold;">Present</span>
+                                    ` : ` 
+                                        <button class="action-btn mark-btn" data-session-id="${session.attendance_session_id}">
+                                            <i class="fas fa-user-check me-1"></i> Mark Attendance
+                                        </button>
+                                    `}
+                                ` : `-`}
+                            </div>
+                        </td>`;
+                    container.appendChild(row);
+                });
+            };
+            
+
+            const setupAttendHandlers = () => {
+                document.querySelectorAll('.mark-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        currentSessionIdToAttend = this.getAttribute('data-session-id');
+                        attendanceConfirmModal.show();
+                    });
+                });
+            };
+    
+            
+            document.getElementById('attendanceConfirmBtn').addEventListener('click', function () {
+                if (!currentSessionIdToAttend) return;
+            
+                const btn = this;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Registering...';
+                btn.disabled = true;
+            
+                // Get the user's location
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(function(position) {
+                        const latitude = position.coords.latitude;
+                        const longitude = position.coords.longitude;
+            
+                        // Use reverse geocoding (Nominatim) to get the human-readable address
+                        fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`)
+                            .then(response => response.json())
+                            .then(data => {
+                                const address = data.address;
+                                const readableAddress = `${address.road}, ${address.city}, ${address.country}`;
+            
+                                // Log the data to ensure we have the correct values
+                                console.log("Data to be sent to the server:", {
+                                    latitude: latitude,
+                                    longitude: longitude,
+                                    address_of_attendance: readableAddress
+                                });
+            
+                                // Send the session ID, latitude, longitude, and address to the server
+                                fetch(`/attend_session/${currentSessionIdToAttend}`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        latitude: latitude,
+                                        longitude: longitude,
+                                        address_of_attendance: readableAddress
+                                    })
+                                })
+                                .then(res => {
+                                    if (res.ok) {
+                                        console.log('Attendance marked successfully!');
+                                        attendanceConfirmModal.hide();
+                                        loadSessions();
+                                    } else {
+                                        console.log('Error: ', res);
+                                        throw new Error('Failed to mark attendance');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error("Error occurred while submitting attendance:", error);
+                                    alert("Failed to register attendance. Please try again.");
+                                })
+                                .finally(() => {
+                                    btn.innerHTML = 'Attend';
+                                    btn.disabled = false;
+                                });
+                            })
+                            .catch(error => {
+                                console.error("Error getting address:", error);
+                                alert("Failed to get address. Please try again.");
+                            });
+                    });
+                } else {
+                    alert('Geolocation is not supported by your browser.');
+                }
+            });
+            
+
+            loadSessions();
+        });
+    });
+</script>
+ 
+
+<!-- Handling Chat and discussion -->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Store the current discussion ID globally
+        let currentDiscussionId = null;
+        
+        // When discussion modal opens
+        $('#discussionModal').on('show.bs.modal', function() {
+            const courseProfessorId = {{ course.course_professor_id }};
+            loadStudentMessages(courseProfessorId);
+        });
+    
+        function loadStudentMessages(courseProfessorId) {
+            const chatContainer = $('#chatContainer');
+            const chatMessages = $('#chatMessages');
+            const chatLoading = $('#chatLoading');
+            const noDiscussionContainer = $('#noDiscussionContainer');
+            const messageInputContainer = $('#messageInputContainer');
+        
+            chatLoading.show();
+            chatContainer.hide();
+            noDiscussionContainer.hide();
+            messageInputContainer.hide();
+            chatMessages.empty();
+        
+            fetch(`/get_student_discussion_messages/${courseProfessorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    chatLoading.hide();
+                    if (data.success) {
+                        // Store the discussion ID for sending messages
+                        currentDiscussionId = data.discussion_id;
+                        
+                        // Always show chat UI if discussion exists (even with no messages)
+                        if (data.discussion_id) {
+                            renderMessages(data.messages || []);
+                            chatContainer.show();
+                            messageInputContainer.show();
+                            scrollToBottom();
+                        } 
+                        // Only show "Start Discussion" if no discussion exists
+                        else {
+                            noDiscussionContainer.show();
+                        }
+                    } else {
+                        renderError(data.message || 'Failed to load messages');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    chatLoading.hide();
+                    renderError('Network error loading messages');
+                });
+        }
+        
+        function renderMessages(messages) {
+            const chatMessages = $('#chatMessages');
+            
+            // Empty state only shown within chat container
+            if (messages.length === 0) {
+                chatMessages.html(`
+                    <div class="text-center py-5 text-muted animate__animated animate__fadeIn">
+                        <i class="fas fa-comment-slash fa-3x mb-3"></i>
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                `);
+            } else {
+                chatMessages.html(
+                    messages.map(msg => {
+                        const formattedDate = formatDateTime(msg.sent_at);
+                        const isStudent = msg.sender_type.toLowerCase() === 'student';
+                        
+                        return `
+                            <div class="d-flex ${isStudent ? 'justify-content-end' : 'justify-content-start'}">
+                                <div class="message-bubble ${isStudent ? 'student-bubble' : 'professor-bubble'} animate__animated animate__fadeIn">
+                                    <p class="mb-1">${msg.message}</p>
+                                    <small class="message-time">${formattedDate}</small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')
+                );
+                
+                // Animate messages in sequence
+                $('.message-bubble').each(function(index) {
+                    $(this).delay(50 * index).queue(function() {
+                        $(this).addClass('show').dequeue();
+                    });
+                });
+            }
+            
+            scrollToBottom();
+        }
+
+        function renderError(message) {
+            const chatMessages = $('#chatMessages');
+            chatMessages.html(`
+                <div class="alert alert-danger animate__animated animate__fadeIn">
+                    ${message}
+                </div>
+            `);
+            $('#chatContainer').show();
+        }
+    
+        function formatDateTime(datetimeString) {
+            const date = new Date(datetimeString);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            
+            return `sent ${year}-${month}-${day} at ${hours}:${minutes}`;
+        }
+    
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('chatContainer');
+            if (chatContainer) {
+                // Small delay to ensure DOM is updated
+                setTimeout(() => {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }, 50);
+            }
+        }
+    
+        $('#sendMessageBtn').click(async function() {
+            const messageInput = $('#messageInput');
+            const message = messageInput.val().trim();
+            if (!message) return;
+            
+            if (!currentDiscussionId) {
+                alert("Error: No active discussion found");
+                return;
+            }
+            
+            // Remove "No messages yet" message if it exists
+            $('.text-center.py-5.text-muted').remove();
+    
+            // Create temporary UI message
+            const tempId = 'temp-' + Date.now();
+            const chatMessages = $('#chatMessages');
+            chatMessages.append(`
+                <div id="${tempId}" class="d-flex justify-content-end">
+                    <div class="message-bubble student-bubble show animate__animated animate__fadeIn">
+                        <p class="mb-1">${message}</p>
+                        <small class="message-time">Sending...</small>
+                    </div>
+                </div>
+            `);
+            scrollToBottom();
+            messageInput.val('');
+    
+            try {
+                const response = await fetch(`/send_student_message/${currentDiscussionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const serverTime = data.sent_at || new Date().toISOString();
+                    $(`#${tempId} .message-time`).text(formatDateTime(serverTime));
+                    
+                    // If this was the first message, show the chat container
+                    if ($('#noDiscussionContainer').is(':visible')) {
+                        $('#noDiscussionContainer').hide();
+                        $('#chatContainer').show();
+                        $('#messageInputContainer').show();
+                    }
+                } else {
+                    $(`#${tempId} .message-bubble`)
+                        .removeClass('student-bubble')
+                        .addClass('alert alert-warning')
+                        .find('p').text(`Failed: ${message}`);
+                    $(`#${tempId} .message-time`).text(data.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error("Error sending:", error);
+                $(`#${tempId} .message-bubble`)
+                    .removeClass('student-bubble')
+                    .addClass('alert alert-danger')
+                    .find('p').text(`Failed: ${message}`);
+                $(`#${tempId} .message-time`).text('Network error');
+            }
+            scrollToBottom();
+        });
+    
+        // Allow pressing Enter to send
+        $('#messageInput').keypress(function(e) {
+            if (e.which === 13) {
+                e.preventDefault();
+                $('#sendMessageBtn').click();
+            }
+        });
+        
+        // Start discussion button handler
+        $('#noDiscussionContainer button').click(function() {
+            const courseProfessorId = {{ course.course_professor_id }};
+            const button = $(this);
+            
+            button.prop('disabled', true).html(`
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Starting...
+            `);
+            
+            fetch('/create_student_discussion', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    course_professor_id: courseProfessorId
+                    // Student ID comes from session automatically
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Store the new discussion ID
+                    currentDiscussionId = data.discussion_id;
+                    
+                    // Hide empty state, show chat UI
+                    $('#noDiscussionContainer').hide();
+                    $('#chatContainer').show();
+                    $('#messageInputContainer').show();
+                    
+                    // Optional: Focus the input field
+                    $('#messageInput').focus();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to start discussion'));
+                    button.prop('disabled', false).html('Start Discussion');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Network error occurred');
+                button.prop('disabled', false).html('Start Discussion');
+            });
+        });
+    });
+</script>
+
+
+<!-- Handling Announcements-->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const courseProfessorId = {{ course.course_professor_id }};
+        
+        // Load announcements when page loads
+        loadAnnouncements(courseProfessorId);
+    
+        function loadAnnouncements(courseProfessorId) {
+            fetch(`/get_announcements_student/${courseProfessorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderAnnouncements(data.announcements || []);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading announcements:', error);
+                });
+        }
+    
+        function renderAnnouncements(announcements) {
+            const container = document.getElementById('announcementsContainer');
+            const countBadge = document.getElementById('announcementCount');
+            
+            // Update count
+            countBadge.textContent = announcements.length;
+            
+            if (announcements.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5 announcement-empty-state">
+                        <i class="fas fa-bullhorn fa-3x mb-3"></i>
+                        <h5>No announcements yet</h5>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Sort by date (newest first)
+            const sortedAnnouncements = [...announcements].sort((a, b) => 
+                new Date(b.created_at) - new Date(a.created_at)
+            );
+            
+            container.innerHTML = sortedAnnouncements.map(announcement => `
+                <div class="mb-4 p-4 bg-white rounded-3 border">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h4 class="mb-0 fw-bold">${announcement.title}</h4>
+                        <small class="text-muted">${formatDateTime(announcement.created_at)}</small>
+                    </div>
+                    <div class="mb-3 announcement-content">${announcement.content}</div>
+                </div>
+            `).join('');
+        }
+    
+        function formatDateTime(datetimeString) {
+            const date = new Date(datetimeString);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            
+            return `posted ${year}-${month}-${day} at ${hours}:${minutes}`;
+        }
+    });
+</script>
+
+
+<!-- Handling Quizzes-->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const courseProfessorId = {{ course.course_professor_id }};
+        const quizzesContainer = document.getElementById('quizzesContainer');
+        const quizTemplate = document.getElementById('quizTemplate');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const quizCount = document.getElementById('quizCount');
+        
+        const gradeModal = new bootstrap.Modal(document.getElementById('gradeModal'));
+    
+        // Fetch quizzes from the endpoint
+        fetch(`/get_quizzes_s/${courseProfessorId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadingSpinner.remove();
+                    
+                    if (data.quizzes.length > 0) {
+                        quizCount.textContent = data.quizzes.length;
+                        
+                        data.quizzes.forEach(quiz => {
+                            const quizElement = quizTemplate.cloneNode(true);
+                            quizElement.classList.remove('d-none');
+                            
+                            // Set border color based on status
+                            const cardElement = quizElement.querySelector('.card');
+                            if (quiz.status === 'upcoming') {
+                                cardElement.style.borderLeftColor = '#6a11cb';
+                            } else if (quiz.status === 'active') {
+                                cardElement.style.borderLeftColor = '#ffc107';
+                            } else if (quiz.status === 'completed') {
+                                cardElement.style.borderLeftColor = '#198754';
+                            }
+                            
+                            // Fill in quiz details
+                            quizElement.querySelector('.quiz-title').textContent = quiz.title;
+                            quizElement.querySelector('.quiz-description').textContent = quiz.description;
+                            quizElement.querySelector('.quiz-date').textContent = quiz.formatted_date;
+                            quizElement.querySelector('.quiz-time').textContent = quiz.formatted_start_time;
+                            quizElement.querySelector('.quiz-duration').textContent = quiz.duration;
+                            quizElement.querySelector('.quiz-grade').textContent = quiz.grade;
+                            
+                            // Set status badge
+                            const statusBadge = quizElement.querySelector('.quiz-status');
+                            statusBadge.textContent = quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1);
+                            statusBadge.classList.add(`quiz-status`, quiz.status);
+                            
+                            // Add appropriate buttons based on status
+                            const actionsContainer = quizElement.querySelector('.quiz-actions');
+                            
+                            if (quiz.status === 'upcoming') {
+                                // Add modify and delete buttons for upcoming quizzes
+                                actionsContainer.innerHTML = `
+                                `;
+                            } else if (quiz.status === 'active') {
+                                // Add indicator for active quizzes
+                                actionsContainer.innerHTML = `
+                                    <a href="/pass_quiz/${quiz.quiz_id}" target="_blank" class="btn btn-sm btn-outline-primary startQuiz-btn" data-quiz-id="${quiz.quiz_id}" style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%); border-color: white !important; color: white !important;font-weight: bold;">
+                                        <i class="fas fa-running me-1" style="color: white !important;"></i> Start Quiz
+                                    </a>
+                                `;
+                            } else if (quiz.status === 'completed') {
+                                // Add view, grades, and analytics buttons for completed quizzes
+                               actionsContainer.innerHTML = `
+                                <a href="/view_quiz_s/${quiz.quiz_id}" target="_blank" class="btn btn-sm btn-outline-primary view-btn" data-quiz-id="${quiz.quiz_id}">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <div style="width: 10px; height:7px;"></div>
+                                <button class="btn btn-sm btn-outline-success grades-btn" data-quiz-id="${quiz.quiz_id}">
+                                    <i class="fas fa-chart-bar me-1"></i> View Grade
+                                </button>
+                                `;
+                            }
+                            
+                            quizzesContainer.appendChild(quizElement);
+                        });
+                    } else {
+                        quizzesContainer.innerHTML = `
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+                                <h5>No quizzes yet</h5>
+                                <p>Wait for professor to publish his first quiz</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    loadingSpinner.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i> Failed to load quizzes. Please try again later.
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching quizzes:', error);
+                loadingSpinner.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Failed to load quizzes. Please try again later.
+                    </div>
+                `;
+            });
+            
+        // Event delegation for buttons (since they're dynamically added)
+        quizzesContainer.addEventListener('click', function(e) {
+            const quizId = e.target.closest('[data-quiz-id]')?.getAttribute('data-quiz-id');
+            if (!quizId) return;
+            
+            if (e.target.closest('.view-btn')) {
+                e.preventDefault();
+                const href = e.target.closest('.view-btn').getAttribute('href');
+                window.open(href, '_blank');
+            } else if (e.target.closest('.grades-btn')) {
+                // Show loading state
+                document.getElementById('gradeSpinner').style.display = 'block';
+                document.getElementById('gradeContent').style.display = 'none';
+                document.getElementById('gradeError').style.display = 'none';
+                
+                // Fetch grade data
+                fetch(`/get_student_quiz_grade/${quizId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Update modal content
+                            document.getElementById('studentGrade').textContent = data.grade;
+                            document.getElementById('totalGrade').textContent = data.total_grade;
+                            
+                            // Calculate and set progress percentage
+                            const percentage = (data.grade / data.total_grade) * 100;
+                            document.getElementById('gradeProgress').style.width = `${percentage}%`;
+                            
+                            // Show content
+                            document.getElementById('gradeSpinner').style.display = 'none';
+                            document.getElementById('gradeContent').style.display = 'block';
+                            
+                            // Show modal
+                            gradeModal.show();
+                        } else {
+                            throw new Error(data.message || 'Failed to load grade');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching grade:', error);
+                        document.getElementById('gradeSpinner').style.display = 'none';
+                        document.getElementById('gradeError').style.display = 'block';
+                        document.getElementById('gradeError').textContent = error.message;
+                        gradeModal.show();
+                    });
+            }
+        });
+            
+    });
+</script>
+
+
+
+{% endblock %}

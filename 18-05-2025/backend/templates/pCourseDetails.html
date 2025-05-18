@@ -1,0 +1,3775 @@
+{% extends "theme.html" %}
+
+{% block title %}{{ course.course_name }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Set default cursor for everything in this template */
+    .container * {
+        cursor: default !important;
+    }
+    
+    /* Make buttons show pointer cursor */
+    .btn, [onclick] {
+        cursor: pointer !important;
+    }
+    .session-block {
+        position: relative;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        z-index: 1;
+    }
+    
+    .session-block:hover:not(:has(.log-presence-btn:hover))::before {
+        opacity: 1;
+    }
+    
+    .session-block:hover:not(:has(.log-presence-btn:hover)){
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .discussion-item {
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+        transition: all 0.2s ease;
+    }
+
+    .discussion-item:hover {
+        background-color: #f8f9fa;
+        transform: translateX(2px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    #discussionsList {
+        max-height: 60vh;
+        overflow-y: auto;
+        padding-right: 8px;
+    }
+
+    /* Custom scrollbar */
+    #discussionsList::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #discussionsList::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 3px;
+    }
+
+
+
+    /* Smooth scroll for chat */
+    #chatContainer {
+        scroll-behavior: smooth;
+    }
+
+    /* Message bubbles */
+    .bg-light {
+        background-color: #f1f3f5 !important;
+    }
+    #discussionModal {
+        --professor-color: #11998e;
+        --student-color: #6c757d;
+        --chat-bg: #f8fafc;
+        --input-bg: #f1f3f5;
+        --animation-duration: 0.3s;
+    }
+    
+    /* Modal container */
+    #discussionModal .modal-content {
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+        transform: translateY(20px);
+        opacity: 0;
+        transition: all var(--animation-duration) ease-out;
+    }
+    
+    #discussionModal.show .modal-content {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    
+
+    /* Chat container */
+    #chatContainer {
+        scroll-behavior: smooth;
+        background-color: var(--chat-bg);
+        background-image: 
+            linear-gradient(var(--chat-bg) 30%, rgba(248, 250, 252, 0)),
+            linear-gradient(rgba(248, 250, 252, 0), var(--chat-bg) 70%);
+        background-attachment: local, local;
+        background-repeat: no-repeat;
+        background-size: 100% 40px, 100% 40px;
+        background-position: top, bottom;
+    }
+    
+    /* Message bubbles */
+    .message-bubble {
+        max-width: 70%;
+        padding: 12px 16px;
+        border-radius: 18px;
+        margin-bottom: 12px;
+        position: relative;
+        opacity: 0;
+        transform: translateY(10px);
+        transition: all var(--animation-duration) ease-out;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .message-bubble.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    .professor-bubble {
+        background: linear-gradient(135deg, var(--professor-color) 0%, #38ef7d 100%);
+        color: white;
+        border-bottom-right-radius: 4px;
+        margin-left: auto;
+    }
+    
+    .student-bubble {
+        background-color: white;
+        color: #333;
+        border-bottom-left-radius: 4px;
+        border: 1px solid #e9ecef;
+        margin-right: auto;
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        opacity: 0.7;
+        display: block;
+        text-align: right;
+        margin-top: 4px;
+    }
+    
+    /* Input area - fixed positioning */
+    .input-group {
+        position: relative;
+    }
+    
+    #messageInput {
+        transition: all 0.2s ease;
+        padding: 12px 50px 12px 20px;
+        background-color: var(--input-bg) !important;
+        width: 100%;
+    }
+    
+    #messageInput:focus {
+        box-shadow: 0 0 0 3px rgba(17, 153, 142, 0.2);
+    }
+    
+    #sendMessageBtn {
+        transition: all 0.2s ease;
+        width: 46px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 5;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+    }
+    
+    #sendMessageBtn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(17, 153, 142, 0.3);
+    }
+    
+    /* Loading animation */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    #chatLoading {
+        animation: fadeIn 0.5s ease;
+    }
+    
+    /* Scrollbar styling */
+    #chatContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #chatContainer::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.05);
+    }
+    
+    #chatContainer::-webkit-scrollbar-thumb {
+        background: rgba(17, 153, 142, 0.3);
+        border-radius: 3px;
+    }
+    
+    #chatContainer::-webkit-scrollbar-thumb:hover {
+        background: rgba(17, 153, 142, 0.5);
+    }
+    /* Custom scrollbar for chat */
+    #chatContainer::-webkit-scrollbar {
+        width: 6px;
+    }
+    #chatContainer::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    #chatContainer::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    .message-bubble {
+        transition: all 0.3s ease;
+    }
+    
+    .message-bubble.show {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    
+    #chatMessages {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+    }
+    /* Ensure new messages are immediately visible */
+    #chatMessages .message-bubble {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    /* For animated messages (when loading history) */
+    #chatMessages .message-bubble:not(.show) {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+
+        /* adding new discussions */
+    .student-to-add {
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .student-to-add:hover {
+        transform: translateX(2px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .add-chat-btn {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        border: none;
+        transition: all 0.2s ease;
+    }
+
+    .add-chat-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .fa-spinner {
+        animation: fa-spin 1s infinite linear;
+    }
+
+    @keyframes fa-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* fix the scrolling issue in the attendance modal*/
+    #attendanceModal .modal-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #attendanceModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    #attendanceModal .table thead th {
+        position: sticky;
+        top: 0;
+        background-color: #f8fafc;
+        z-index: 10;
+    }
+    /* Make attendance modal wider  */
+    #attendanceModal .modal-dialog {
+        max-width: 90vw;      
+        width: 90vw;          
+    }
+    
+    @media (min-width: 992px) { /* lg breakpoint */
+        #attendanceModal .modal-dialog {
+            max-width: 900px; 
+            width: auto;       
+        }
+    }
+
+    #attendanceAnalyticsModal .modal-dialog {
+        max-width: 90vw;      
+        width: 90vw;          
+    }
+    
+    @media (min-width: 992px) { /* lg breakpoint */
+        #attendanceAnalyticsModal .modal-dialog {
+            max-width: 1300px; 
+            width: auto;       
+        }
+    }
+
+    /* Custom scrollbar for modal */
+    #attendanceModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #attendanceModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 3px;
+    }
+
+    #attendanceModal .modal-body::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+    }
+
+    /* fixing the scrolling issue in the log presence*/
+    #presenceModal .modal-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #presenceModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    /* Custom scrollbar */
+    #presenceModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #presenceModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: rgba(106, 17, 203, 0.3);
+        border-radius: 3px;
+    }
+
+    #presenceModal .modal-body::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+    }
+
+    /* Session block styling */
+    .session-block {
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+    }
+
+    .session-block:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    /* fixing the scrolling of discussion modal */
+    #discussionsModal .modal-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #discussionsModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    /* Custom scrollbar matching the green gradient */
+    #discussionsModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #discussionsModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: rgba(17, 153, 142, 0.3);
+        border-radius: 3px;
+    }
+
+    #discussionsModal .modal-body::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+    }
+
+    /* Discussion items styling */
+    .discussion-item {
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .discussion-item:hover {
+        transform: translateX(2px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    /* fix the scrolling of add new chat */
+    #addChatModal .modal-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    #addChatModal .modal-body {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    /* Custom scrollbar matching the green gradient */
+    #addChatModal .modal-body::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    #addChatModal .modal-body::-webkit-scrollbar-thumb {
+        background-color: rgba(17, 153, 142, 0.3);
+        border-radius: 3px;
+    }
+
+    #addChatModal .modal-body::-webkit-scrollbar-track {
+        background: rgba(0,0,0,0.05);
+    }
+
+    /* Student items styling */
+    .student-to-add {
+        transition: all 0.2s ease;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .student-to-add:hover {
+        transform: translateX(2px);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .add-chat-btn {
+        transition: all 0.2s ease;
+    }
+
+    .add-chat-btn:hover {
+        transform: scale(1.1);
+    }
+
+    /*line break*/
+    .announcement-content {
+        white-space: pre-line;
+    }
+
+    /* for quizzes*/
+    .hover-scale:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    }
+    .quiz-status.upcoming {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+    } 
+    .quiz-status.active {
+        background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);
+        color: #212529;
+    }
+    .quiz-status.completed {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+    }
+    .quiz-actions .btn {
+        min-width: 100px;
+        border-radius: 8px;
+        transition: all 0.2s;
+    }
+    .quiz-actions .btn:hover {
+        transform: translateY(-1px);
+    }
+    .quiz-card:hover:after {
+        content: none;
+        animation: none;
+    }
+
+    #quizAnalyticsModal .modal-dialog {
+        max-width: 90vw;      
+        width: 90vw;          
+    }
+    
+    @media (min-width: 992px) { /* lg breakpoint */
+        #quizAnalyticsModal .modal-dialog {
+            max-width: 1300px; 
+            width: auto;       
+        }
+    }
+</style>
+
+<!-- Course Details --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0;">
+            <h1 class="mb-0">{{ course.course_name }}</h1>
+            <div class="d-flex gap-3 mt-3">
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.course_code }}</span>
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.level }}</span>
+                <span class="badge bg-white text-primary rounded-pill px-3">{{ course.session_type }}</span>
+            </div>
+        </div>
+        
+        <div class="card-body p-5">
+            <h3 class="mb-4">Sessions Schedule</h3>
+            {% for session in course.course_sessions %}
+            <div class="mb-4 p-4 border rounded-3" style="background-color: #f8f9fa;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0 text-primary">
+                        <i class="fas fa-calendar-day me-2"></i>
+                        {{ session.day }} from {{ session.start }} to {{ session.end }}
+                    </h5>
+                    <span class="badge rounded-pill px-3 py-2" 
+                          style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                        <i class="fas fa-door-open me-1"></i> Room {{ session.classroom }}
+                    </span>
+                    
+                </div>
+                
+                <div class="mt-3">
+                    <h6 class="d-inline-block me-2">
+                        <i class="fas fa-users me-1"></i> Groups:
+                    </h6>
+                    {% for group in session.groups.split(', ') %}
+                    <span class="badge bg-light text-dark rounded-pill px-3 py-1 me-2 border">
+                        {{ group }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+
+<!-- Course functionalities------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-3 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0;">
+        </div>
+        
+        <div class="card-body p-4">
+            <div class="row g-3">  
+                <!-- Log Presence -->
+                <div class="col-md-6 mb-3"> 
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#presenceModal">
+                        <i class="fas fa-user-check me-2"></i> Log Presence
+                    </button>
+                </div>
+                
+                <!-- Attendance -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#attendanceModal">
+                        <i class="fas fa-clipboard-list me-2"></i> Attendance
+                    </button>
+                </div>
+                
+                <!-- Discussions -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;"
+                            data-bs-toggle="modal" data-bs-target="#discussionsModal">
+                        <i class="fas fa-comments me-2"></i> Discussions
+                    </button>
+                </div>
+                
+                <!-- Course Chat-bot -->
+                <div class="col-md-6 mb-3">
+                    <button class="btn w-100 py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%); color: white;">
+                        <i class="fas fa-robot me-2"></i> Course Chat-bot
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Attendance Modal -->
+<div class="modal fade" id="attendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Attendance Sessions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <div class="p-4">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead style="color: #0e3069; position: sticky; top: 0; background-color: #f8fafc; z-index: 1;">
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Location</th>
+                                    <th>Groups</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceSessionsContainer">
+                                <!-- Sessions will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noSessionsMessage" class="text-center py-4">
+                        <i class="fas fa-clipboard text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                        <p class="text-muted mt-3">No attendance sessions found</p>
+                    </div>
+                </div>
+            </div>
+           
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0" style="flex-shrink: 0; gap: 8px;">
+                <button class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;"
+                        data-bs-toggle="modal" data-bs-target="#createAttendanceModal">
+                    <i class="fas fa-plus-circle me-2"></i> Create Attendance Sheet
+                </button>
+                <button class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #fc25b4 0%, #2575fc 100%); color: white;"
+                        data-bs-toggle="modal" data-bs-target="#attendanceAnalyticsModal" >
+                    <i class="fas fa-chart-bar me-2"></i> Analytics
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Create Attendance Modal  -->
+<div class="modal fade" id="createAttendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0;">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Back" data-bs-toggle="modal" data-bs-target="#attendanceModal" style="flex-shrink: 0;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div style="width: 20px;"></div>
+                <div class="flex-grow-1">
+                    <h5 class="modal-title">
+                        <i class="fas fa-file-circle-plus me-2"></i> New Attendance Sheet
+                    </h5>
+                </div>
+                
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4 scrollable-modal-content" style="background-color: #f8fafc;">
+                <div class="modal-body p-4" style="background-color: #f8fafc;">
+                    <form id="attendanceForm" method="POST" action="{{ url_for('public.create_attendance') }}">
+                        <input type="hidden" name="course_professor_id" value="{{ course.course_professor_id }}">
+                        <input type="hidden" name="course_code" value="{{ course.course_code }}">
+
+                        <!-- Date Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Date</label>
+                            <input type="date" name="session_date" class="form-control rounded-3 py-2 border-1" 
+                                style="border-color: #e0e6ed;" required>
+                        </div>
+                        
+                        <!-- Groups Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Groups</label>
+                            <select name="groups" class="form-select rounded-3 py-2 border-1" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="ALL">All Groups</option>
+                                {% for session in course.course_sessions %}
+                                    <option value="{{ session.groups }}">{{ session.groups }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Start Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Start Time</label>
+                            <select name="start_time" class="form-select rounded-3 py-2 border-1 mb-2 time-selector" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="" selected disabled>Select start time</option>
+                                <option value="08:30:00">08:30 AM</option>
+                                <option value="10:00:00">10:00 AM</option>
+                                <option value="11:30:00">11:30 AM</option>
+                                <option value="13:30:00">01:30 PM</option>
+                                <option value="15:00:00">03:00 PM</option>
+                                <option value="custom">Custom Time</option>
+                            </select>
+                            <div class="custom-time-container" style="display: none;">
+                                <input type="text" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+
+                        <!-- End Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">End Time</label>
+                            <select name="end_time" class="form-select rounded-3 py-2 border-1 mb-2 time-selector" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="" selected disabled>Select end time</option>
+                                <option value="10:00:00">10:00 AM</option>
+                                <option value="11:30:00">11:30 AM</option>
+                                <option value="13:00:00">01:00 PM</option>
+                                <option value="15:00:00">03:00 PM</option>
+                                <option value="16:30:00">04:30 PM</option>
+                                <option value="custom">Custom Time</option>
+                            </select>
+                            <div class="custom-time-container" style="display: none;">
+                                <input type="text" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Location</label>
+                            <select name="location" class="form-select rounded-3 py-2 border-1" 
+                                style="border-color: #e0e6ed;">
+                            <option value="" disabled selected>Select classroom</option>
+                            
+                            <!-- Amphitheaters (Available) -->
+                            <optgroup label="Amphitheaters">
+                                <option value="A1">Amphitheater 1</option>
+                                <option value="A2">Amphitheater 2</option>
+                                <option value="A3">Amphitheater 3</option>
+                                <option value="A4">Amphitheater 4</option>
+                                <option value="A5">Amphitheater 5</option>
+                                <option value="A6">Amphitheater 6</option>
+                                <option value="A7">Amphitheater 7</option>
+                                <option value="A8">Amphitheater 8</option>
+                                <option value="A9">Amphitheater 9</option>
+                                <option value="A10">Amphitheater 10</option>
+                                <option value="A11">Amphitheater 11</option>
+                                <option value="A12">Amphitheater 12</option>
+                            </optgroup>
+                            
+                            <!-- Classrooms (Available) -->
+                            <optgroup label="Classrooms">
+                                <option value="C1">Classroom 1</option>
+                                <option value="C2">Classroom 2</option>
+                                <option value="C3">Classroom 3</option>
+                                <option value="C4">Classroom 4</option>
+                                <option value="C5">Classroom 5</option>
+                                <option value="C6">Classroom 6</option>
+                                <option value="C7">Classroom 7</option>
+                                <option value="C8">Classroom 8</option>
+                                <option value="C9">Classroom 9</option>
+                                <option value="C10">Classroom 10</option>
+                                <option value="C11">Classroom 11</option>
+                                <option value="C12">Classroom 12</option>
+                                <option value="C13">Classroom 13</option>
+                                <option value="C14">Classroom 14</option>
+                                <option value="C15">Classroom 15</option>
+                                <option value="C16">Classroom 16</option>
+                                <option value="C30">Classroom 30</option>
+                                <option value="C31">Classroom 31</option>
+                                <option value="C32">Classroom 32</option>
+                                <option value="C33">Classroom 33</option>
+                                <option value="C34">Classroom 34</option>
+                            </optgroup>
+                            
+                            <!-- Labs (Available) -->
+                            <optgroup label="Labs">
+                                <option value="L1">Lab 1</option>
+                                <option value="L2">Lab 2</option>
+                                <option value="L3">Lab 3</option>
+                                <option value="L4">Lab 4</option>
+                                <option value="L5">Lab 5</option>
+                                <option value="L6">Lab 6</option>
+                                <option value="L7">Lab 7</option>
+                                <option value="L8">Lab 8</option>
+                                <option value="L9">Lab 9</option>
+                                <option value="L10">Lab 10</option>
+                                <option value="LLINUX">Lab Linux</option>
+                                <option value="LLINUX2">Lab Linux 2</option>
+                            </optgroup>
+
+                            <!-- OTHER -->
+                            <optgroup label="other">
+                                <option value="online">online</option>
+                            </optgroup>
+                        </select>
+                        </div>
+                        
+                        <!-- Additional Details -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Additional Details <span class="text-muted">(Optional)</span></label>
+                            <textarea name="details" class="form-control rounded-3 border-1" rows="3"
+                                    style="border-color: #e0e6ed; resize: none;"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn px-4 py-2 rounded-pill border-0 me-2" 
+                        style="background: #f8f9fa; color: #6c757d;"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="submit" form="attendanceForm" class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;">
+                    <i class="fas fa-check-circle me-2"></i> Create
+                </button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- Update Attendance Modal -->
+<div class="modal fade" id="updateAttendanceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); border-radius: 16px 16px 0 0;">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Back" data-bs-toggle="modal" data-bs-target="#attendanceModal" style="flex-shrink: 0;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div style="width: 20px;"></div>
+                <div class="flex-grow-1">
+                    <h5 class="modal-title">
+                        <i class="fas fa-pen-to-square me-2"></i> Update Attendance Session
+                    </h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4 scrollable-modal-content" style="background-color: #f8fafc;">
+                <div class="modal-body p-4" style="background-color: #f8fafc;">
+                    <form id="updateAttendanceForm" method="POST" action="{{ url_for('public.update_attendance_session') }}">
+                        <input type="hidden" name="attendance_session_id" id="update_session_id">
+                        <input type="hidden" name="course_code" value="{{ course.course_code }}">
+                        <input type="hidden" name="course_professor_id" value="{{ course.course_professor_id }}">
+                        
+
+                        <!-- Date Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Date</label>
+                            <input type="date" name="session_date" id="update_session_date" 
+                                   class="form-control rounded-3 py-2 border-1" 
+                                   style="border-color: #e0e6ed;" >
+                        </div>
+                        
+                        <!-- Groups Field -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Groups</label>
+                            <select name="groups" id="update_groups" class="form-select rounded-3 py-2 border-1" 
+                                    style="border-color: #e0e6ed;" required>
+                                <option value="ALL">All Groups</option>
+                                {% for session in course.course_sessions %}
+                                    <option value="{{ session.groups }}">{{ session.groups }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Start Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Start Time</label>
+                            <div class="custom-time-container" >
+                                <input type="text" name="start_time" id="update_start_time" class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+
+                        <!-- End Time -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">End Time</label>
+                            <div class="custom-time-container" >
+                                <input type="text" name="end_time" id="update_end_time"  class="form-control rounded-3 py-2 border-1 mt-2 custom-time-input"
+                                    style="border-color: #e0e6ed;"
+                                    placeholder="HH:MM:SS"
+                                    pattern="^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$">
+                                <small class="text-muted">Format: 00:00:00 to 23:59:59</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Location -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Location</label>
+                            <select name="location" id="update_location" 
+                                    class="form-select rounded-3 py-2 border-1" 
+                                    style="border-color: #e0e6ed;">
+                                    <option value="" disabled selected>Select classroom</option>
+                            
+                                    <!-- Amphitheaters (Available) -->
+                                    <optgroup label="Amphitheaters">
+                                        <option value="A1">Amphitheater 1</option>
+                                        <option value="A2">Amphitheater 2</option>
+                                        <option value="A3">Amphitheater 3</option>
+                                        <option value="A4">Amphitheater 4</option>
+                                        <option value="A5">Amphitheater 5</option>
+                                        <option value="A6">Amphitheater 6</option>
+                                        <option value="A7">Amphitheater 7</option>
+                                        <option value="A8">Amphitheater 8</option>
+                                        <option value="A9">Amphitheater 9</option>
+                                        <option value="A10">Amphitheater 10</option>
+                                        <option value="A11">Amphitheater 11</option>
+                                        <option value="A12">Amphitheater 12</option>
+                                    </optgroup>
+                                    
+                                    <!-- Classrooms (Available) -->
+                                    <optgroup label="Classrooms">
+                                        <option value="C1">Classroom 1</option>
+                                        <option value="C2">Classroom 2</option>
+                                        <option value="C3">Classroom 3</option>
+                                        <option value="C4">Classroom 4</option>
+                                        <option value="C5">Classroom 5</option>
+                                        <option value="C6">Classroom 6</option>
+                                        <option value="C7">Classroom 7</option>
+                                        <option value="C8">Classroom 8</option>
+                                        <option value="C9">Classroom 9</option>
+                                        <option value="C10">Classroom 10</option>
+                                        <option value="C11">Classroom 11</option>
+                                        <option value="C12">Classroom 12</option>
+                                        <option value="C13">Classroom 13</option>
+                                        <option value="C14">Classroom 14</option>
+                                        <option value="C15">Classroom 15</option>
+                                        <option value="C16">Classroom 16</option>
+                                        <option value="C30">Classroom 30</option>
+                                        <option value="C31">Classroom 31</option>
+                                        <option value="C32">Classroom 32</option>
+                                        <option value="C33">Classroom 33</option>
+                                        <option value="C34">Classroom 34</option>
+                                    </optgroup>
+                                    
+                                    <!-- Labs (Available) -->
+                                    <optgroup label="Labs">
+                                        <option value="L1">Lab 1</option>
+                                        <option value="L2">Lab 2</option>
+                                        <option value="L3">Lab 3</option>
+                                        <option value="L4">Lab 4</option>
+                                        <option value="L5">Lab 5</option>
+                                        <option value="L6">Lab 6</option>
+                                        <option value="L7">Lab 7</option>
+                                        <option value="L8">Lab 8</option>
+                                        <option value="L9">Lab 9</option>
+                                        <option value="L10">Lab 10</option>
+                                        <option value="LLINUX">Lab Linux</option>
+                                        <option value="LLINUX2">Lab Linux 2</option>
+                                    </optgroup>
+        
+                                    <!-- OTHER -->
+                                    <optgroup label="other">
+                                        <option value="online">online</option>
+                                    </optgroup>
+                            </select>
+                        </div>
+                        
+                        <!-- Additional Details -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold" style="color: #2575fc; font-weight: bold;">Additional Details <span class="text-muted">(Optional)</span></label>
+                            <textarea name="details" id="update_details" 
+                                      class="form-control rounded-3 border-1" rows="3"
+                                      style="border-color: #e0e6ed; resize: none;"></textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn px-4 py-2 rounded-pill border-0 me-2" 
+                        style="background: #f8f9fa; color: #6c757d;"
+                        data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                <button type="submit" form="updateAttendanceForm" class="btn px-4 py-2 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #2575fc 0%, #11998e 100%); color: white;">
+                    <i class="fas fa-save me-2"></i> Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mini delete Confirmation Modal -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-trash-alt text-danger mb-3" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Delete this session?</h5>
+          <p class="small text-muted">This action cannot be undone</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="confirmDeleteBtn">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<!-- Mini closing attendance Confirmation Modal -->
+<div class="modal fade" id="closeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-lock text-warning mb-3" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Close this session?</h5>
+          <p class="small text-muted">Students won't be able to mark attendance after closing</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-warning" id="confirmCloseBtn">
+                <i class="fas fa-lock me-1"></i> Close Session
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<!-- Attendance Analytics Modal -->
+<div class="modal fade" id="attendanceAnalyticsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #fc25b4 0%, #2575fc 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Back" data-bs-toggle="modal" data-bs-target="#attendanceModal" style="flex-shrink: 0;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div style="width: 20px;"></div>
+                <div class="flex-grow-1">
+                    <h5 class="modal-title">
+                        <i class="fas fa-chart-bar me-2"></i> Analytics
+                    </h5>
+                </div>      
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <!-- First Row - Top Charts -->
+                <div class="row g-4 p-4">
+                    <!-- Donut Chart Card -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; position: relative;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-calendar-check me-2 text-primary" style="margin-right: 10px;"></i>Attendance Coverage
+                                </h6>
+                                <p class="text-muted small mb-0">Sessions with attendance vs total sessions</p>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="text-center flex-grow-1 d-flex flex-column justify-content-center position-relative" style="height: 200px;">
+                                    <canvas id="attendanceDonutChart"></canvas>
+                                    <!-- Bottom-right aligned percentage and label -->
+                                    <div class="position-absolute" style="bottom: 10px; right: 10px; text-align: right;">
+                                        <h4 class="mb-0 fw-bold" id="donutPercentage" style="line-height: 1; font-size: 1.25rem;">0%</h4>
+                                        <small class="text-muted" style="font-size: 0.7rem;">Coverage</small>
+                                    </div>
+                                </div>
+                                <div class="mt-3 px-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #fc25b4;"></span>
+                                        <small style="line-height: 1.2;">Recorded: <span class="fw-semibold" id="actualCount">0</span></small>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #2575fc;"></span>
+                                        <small style="line-height: 1.2;">Expected: <span class="fw-semibold" id="expectedCount">0</span></small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #6c757d;"></span>
+                                        <small style="line-height: 1.2;">Extra: <span class="fw-semibold" id="extraCount">0</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gauge Chart Card -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-user-check me-2 text-primary"  style="margin-right: 10px;"></i>Overall Attendance Rate
+                                </h6>
+                                <p class="text-muted small mb-0">Students attendance across all sessions</p>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="text-center flex-grow-1 d-flex flex-column justify-content-center">
+                                    <div class="position-relative" style="height: 220px;">
+                                        <canvas id="attendanceGaugeChart"></canvas>
+                                        <!-- Centered percentage text -->
+                                        <div class="position-absolute text-center" 
+                                             style="top: 70%; left: 50%; transform: translate(-50%, -50%); width: 100%;">
+                                            <h1 class="mb-0 fw-bold" id="gaugePercentage" 
+                                                style="color: #fc25b4; text-shadow: 0 0 5px rgba(255,255,255,0.8);">0%</h1>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 px-3">
+                                    <div class="d-flex justify-content-between">
+                                        <small class="text-muted">Total students(across all sessions): <span class="fw-semibold" id="totalStudents">0</span></small>
+                                        <small class="text-muted">Attended: <span class="fw-semibold" id="attendedStudents">0</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pie Chart Card -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-hourglass-half me-2 text-primary" style="margin-right: 10px;"></i>Session Status
+                                </h6>
+                                <p class="text-muted small mb-0">Distribution of session statuses</p>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <div class="text-center flex-grow-1 d-flex flex-column justify-content-center">
+                                    <div class="position-relative" style="height: 200px;">
+                                        <canvas id="sessionPieChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="mt-3 px-3">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #6f42c1;"></span>
+                                        <small style="line-height: 1.2;">Finished: <span class="fw-semibold" id="finishedCount">0</span></small>
+                                    </div>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #fd7e14;"></span>
+                                        <small style="line-height: 1.2;">Happening Now: <span class="fw-semibold" id="activeCount">0</span></small>
+                                    </div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="badge me-2" style="width: 12px; height: 12px; border-radius: 50%; background: #20c997;"></span>
+                                        <small style="line-height: 1.2;">Upcoming: <span class="fw-semibold" id="upcomingCount">0</span></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Second Row - Line Chart -->
+                <div class="row g-4 px-4 pb-4">
+                    <!-- Line Chart Card -->
+                    <div class="col-12">
+                        <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-chart-line me-2 text-primary" style="margin-right: 10px;"></i>Attendance Over Time
+                                </h6>
+                                <p class="text-muted small mb-0">Attendance rate trends by group combination</p>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 300px;">
+                                    <canvas id="attendanceLineChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Third Row - Group Comparison Charts -->
+                <div class="row g-4 px-4 pb-4">
+                    <!-- Stacked Bar Chart Card (Half width) -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-users me-2 text-primary" style="margin-right: 10px;"></i>Group Attendance Comparison
+                                </h6>
+                                <p class="text-muted small mb-0">Average attendance per group</p>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 300px;">
+                                    <canvas id="groupComparisonChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-chart-pie me-2 text-primary" style="margin-right: 10px;"></i>Session Attendance Patterns
+                                </h6>
+                                <p class="text-muted small mb-0">Attendance rate vs session date</p>
+                            </div>
+                            <div class="card-body">
+                                <div style="height: 300px;">
+                                    <canvas id="attendanceBubbleChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fourth Row - Top Performers Tables -->
+                <!-- Fourth Row - Top Performers Tables -->
+                <div class="row g-4 px-4 pb-4">
+                    <!-- Top Attendees Card -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-trophy me-2" style="color: #20c997; margin-right: 10px;"></i>Top Attendees
+                                </h6>
+                                <p class="text-muted small mb-0">Ranked by attendance rate (highest to lowest)</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="topAttendeesTable">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" class="text-nowrap">Rank</th>
+                                                <th scope="col">Student</th>
+                                                <th scope="col">Group</th>
+                                                <th scope="col" class="text-end">Attendance Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i> Recognizes students with perfect or near-perfect attendance
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Absentees Card -->
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
+                            <div class="card-header bg-white border-0 pb-0" style="border-radius: 12px 12px 0 0;">
+                                <h6 class="fw-semibold mb-0">
+                                    <i class="fas fa-exclamation-circle me-2" style="color: #dc3545; margin-right: 10px;"></i>Chronic Absentees
+                                </h6>
+                                <p class="text-muted small mb-0">Ranked by attendance rate (lowest to highest)</p>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="topAbsenteesTable">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" class="text-nowrap">Rank</th>
+                                                <th scope="col">Student</th>
+                                                <th scope="col">Group</th>
+                                                <th scope="col" class="text-end">Attendance Details</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <!-- Will be populated by JavaScript -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="mt-2 text-muted small">
+                                    <i class="fas fa-info-circle me-1"></i> Identifies students with chronic absenteeism (attending ≤50% of sessions)
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Log Presence Modal -->
+<div class="modal fade" id="presenceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Log Presence
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <div class="p-4">
+                    {% for session in course.course_sessions %}
+                    <div class="mb-4 p-4 border rounded-3 session-block"
+                        data-day="{{ session.day }}"
+                        data-start="{{ session.start }}"
+                        data-end="{{ session.end }}"
+                        data-room-id="{{ session.classroom }}"
+                        style="background-color: #f8f9fa;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h5 class="mb-0 text-primary">
+                                <i class="fas fa-calendar-day me-2"></i>
+                                {{ session.day }} from {{ session.start }} to {{ session.end }}
+                            </h5>
+                            <span class="badge rounded-pill px-3 py-2" 
+                                  style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                                <i class="fas fa-door-open me-1"></i> Room {{ session.classroom }}
+                            </span>
+                        </div>
+                        
+                        <div class="mt-3">
+                            <h6 class="d-inline-block me-2">
+                                <i class="fas fa-users me-1"></i> Groups:
+                            </h6>
+                            {% for group in session.groups.split(', ') %}
+                            <span class="badge bg-light text-dark rounded-pill px-3 py-1 me-2 border">
+                                {{ group }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                        <div class="mt-4 text-end presence-action">
+                            <!-- JS will inject button or label here -->
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Discussions Modal -->
+<div class="modal fade" id="discussionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <h5 class="modal-title">
+                    <i class="fas fa-clipboard-list me-2"></i> Discussions
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <div class="card-body p-3">
+                    <div id="discussionsList" class="list-group">
+                        <!-- Discussions will be loaded here dynamically -->
+                        <div class="text-center py-5" id="loadingIndicator">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading discussions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-white border-0" style="flex-shrink: 0;">
+                <button class="btn px-4 py-2 rounded-pill border-0 mx-auto" 
+                        style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;"
+                        data-bs-toggle="modal" data-bs-target="#addChatModal">
+                    <i class="fas fa-plus-circle me-2"></i> Add New Chat
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Single Discussion Modal -->
+<div class="modal fade" id="discussionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0" style="border-radius: 16px; height: 80vh;">
+            <!-- Modal Header -->
+            <div class="modal-header p-4 text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px 16px 0 0;">
+                <div class="d-flex align-items-center w-100">
+                    <button type="button" class="btn btn-sm btn-light" aria-label="Back" data-bs-toggle="modal" data-bs-target="#discussionsModal" style="flex-shrink: 0;">
+                        <i class="fas fa-arrow-left"></i>
+                    </button>
+                    <div style="width: 20px;"></div>
+                    <div class="flex-grow-1">
+                        <h5 class="modal-title mb-0 fw-bold" id="discussionStudentName">
+                            <i class="fas fa-user-graduate" style="margin-right: 10px;"></i> Loading...
+                        </h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+            </div>
+  
+            <!-- Modal Body - Chat Area -->
+            <div class="modal-body p-0 d-flex flex-column" style="overflow: hidden;">
+                <div id="chatLoading" class="text-center py-5" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                    <div class="spinner-grow text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 text-muted">Loading messages...</p>
+                </div>
+                
+                <div id="chatContainer" style="display: none; flex: 1; overflow-y: auto;">
+                    <div id="chatMessages" class="p-4"></div>
+                </div>
+            </div>
+
+            <!-- Message Input Area -->
+            <div class="modal-footer bg-white p-3 border-top">
+                <div class="w-100 position-relative">
+                    <div class="input-group">
+                        <input type="text" id="messageInput" class="form-control rounded-pill border-0" 
+                            placeholder="Type your message...">
+                        <button class="btn rounded-pill" id="sendMessageBtn">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Add New Chat Modal -->
+<div class="modal fade" id="addChatModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                <button type="button" class="btn btn-sm btn-light" aria-label="Back" data-bs-toggle="modal" data-bs-target="#discussionsModal" style="flex-shrink: 0;">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <div style="width: 20px;"></div>
+                <div class="flex-grow-1">
+                    <h5 class="modal-title">
+                        <i class="fas fa-user-plus me-2"></i> Start New Discussion
+                    </h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                <div class="p-4">
+                    <div id="nonDiscussedStudentsList" class="list-group">
+                        <div class="text-center py-5" id="studentsLoadingIndicator">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Loading students...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Announcements ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<!-- Announcements Display Container -->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-bullhorn me-2" style="margin-right: 10px;"></i>Announcements</h3>
+                <span class="badge bg-light text-primary rounded-pill" id="announcementCount">0</span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Create Announcement Button -->
+            <div class="mb-4">
+                <button class="btn py-3 rounded-pill border-0" 
+                        style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;"
+                        data-bs-toggle="modal" data-bs-target="#announcementModal">
+                    <i class="fas fa-plus me-2" style="margin-right: 10px;"></i>Create Announcement
+                </button>
+            </div>
+            
+            <!-- Announcements List -->
+            <div id="announcementsContainer" class="mt-4">
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-bullhorn fa-3x mb-3"></i>
+                    <h5>No announcements yet</h5>
+                    <p>Create your first announcement to share with students</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- create Announcement Modal -->
+<div class="modal fade" id="announcementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0" style="border-radius: 16px;">
+            <!-- Modal Header -->
+            <div class="modal-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0;">
+                <h5 class="modal-title mb-0 fw-bold">
+                    <i class="fas fa-bullhorn me-2" style="margin-right: 10px;"></i>Create New Announcement
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="modal-body p-4">
+                <form id="announcementForm">
+                    <div class="mb-4">
+                        <label for="announcementTitle" class="form-label fw-bold">Title</label>
+                        <input type="text" class="form-control rounded-pill py-3" id="announcementTitle" placeholder="Enter announcement title" required>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label for="announcementContent" class="form-label fw-bold">Content</label>
+                        <textarea class="form-control" id="announcementContent" rows="6" placeholder="Write your announcement details here..." style="border-radius: 12px;"></textarea>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="modal-footer bg-light p-4" style="border-radius: 0 0 16px 16px;">
+                <button type="button" class="btn btn-secondary rounded-pill px-4 py-2" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn text-white rounded-pill px-4 py-2" 
+                        style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);"
+                        id="submitAnnouncement">
+                    <i class="fas fa-paper-plane me-2" style="margin-right: 10px;"></i>Publish Announcement
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Mini announcement delete Confirmation Modal -->
+<div class="modal fade" id="deleteAnnouncementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0">
+        <div class="modal-body text-center p-4">
+          <i class="fas fa-trash-alt text-danger mb-3" style="font-size: 2rem;"></i>
+          <h5 class="mb-3">Delete this announcement?</h5>
+          <p class="small text-muted">This action cannot be undone</p>
+          <div class="d-flex justify-content-center gap-3">
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button type="button" class="btn btn-sm btn-danger" id="deleteAnnouncementBtn">
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+</div>
+
+
+<!-- QUIZ MODAL --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<div class="container my-5">
+    <div class="card border-0 shadow-lg" style="border-radius: 16px;">
+        <div class="card-header p-4 text-white" style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); border-radius: 16px 16px 0 0;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0"><i class="fas fa-clipboard-list me-2" style="margin-right: 10px;"></i>Quizzes</h3>
+                <span class="badge bg-light text-primary rounded-pill" id="quizCount">0</span>
+            </div>
+        </div>
+
+        <div class="card-body p-4">
+            <!-- Create Quiz Button -->
+            <div class="mb-4">
+                <a href="{{ url_for('public.quizPrep', course_professor_id=course.course_professor_id) }}" >
+                    <button class="btn py-3 rounded-pill border-0" 
+                            style="background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); color: white;">
+                        <i class="fas fa-plus me-2" style="margin-right: 10px;"></i>Create New Quiz
+                    </button>
+                </a>
+            </div>
+
+            <!-- Quizzes List Container -->
+            <div id="quizzesContainer" class="mt-4">
+                <!-- Loading spinner -->
+                <div id="loadingSpinner" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading quizzes...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quiz Item Template (Hidden, will be cloned for each quiz) -->
+<div id="quizTemplate" class="d-none">
+    <div class="card mb-4 border-1 shadow hover-scale quiz-card" style="border-radius: 12px; border-left: 4px solid; transition: transform 0.2s ease-in-out;">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge rounded-pill px-3 py-2 ms-3 quiz-status"></span>
+                        <div style="width: 10px;"></div>
+                        <h4 class="quiz-title mb-0" style="color: #3a0ca3;"></h4>
+                    </div>
+                    
+                    <p class="quiz-description text-muted mb-3"></p>
+                    <div class="d-flex flex-wrap gap-3 align-items-center">
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="far fa-calendar-alt me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-date"></span>
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="far fa-clock me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-time"></span>
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="fas fa-stopwatch me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-duration"></span> min
+                        </span>
+                        <div style="width: 10px;"></div>
+                        <span class="d-flex align-items-center text-muted">
+                            <i class="fas fa-star me-2" style="margin-right: 10px;"></i>
+                            <span class="quiz-grade"></span> pts
+                        </span>
+                    </div>
+                </div>
+
+                <div class="quiz-actions d-flex flex-column gap-2 ms-3">
+                    <!-- Buttons will be inserted here based on status -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Quiz Analytics Modal -->
+<div class="modal fade" id="quizAnalyticsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg" style="max-height: 80vh;">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; height: 80vh; display: flex; flex-direction: column;">
+            <!-- Modal Header -->
+            <div class="modal-header p-3 text-white" style="background: linear-gradient(135deg,  #f46b45 0%, #eea849 100%); border-radius: 16px 16px 0 0; flex-shrink: 0;">
+                
+                <div style="width: 20px;"></div>
+                <div class="flex-grow-1">
+                    <h5 class="modal-title">
+                        <i class="fas fa-chart-bar me-2"></i> Analytics
+                    </h5>
+                </div>      
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <!-- Modal Body - Scrollable Content -->
+            <div class="modal-body p-0" style="background-color: #f8fafc; overflow-y: auto; flex: 1;">
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+<div style="height: 20px;"></div>
+
+
+
+
+<!-- SCRIPTSSSSSS ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+<!-- Handling custom Time in Attendance -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle custom time selection
+        document.querySelectorAll('.time-selector').forEach(select => {
+            select.addEventListener('change', function() {
+                const container = this.closest('.mb-4').querySelector('.custom-time-container');
+                if(this.value === 'custom') {
+                    container.style.display = 'block';
+                    const input = container.querySelector('.custom-time-input');
+                    input.value = '';
+                    input.focus();
+                    this.dataset.customSelected = 'true';
+                } else {
+                    container.style.display = 'none';
+                    this.dataset.customSelected = 'false';
+                }
+            });
+        });
+    
+        // Time input handler
+        document.querySelectorAll('.custom-time-input').forEach(input => {
+            let lastValidValue = '';
+            
+            input.addEventListener('input', function(e) {
+                // Get cursor position before changes
+                const cursorPos = this.selectionStart;
+                
+                // Remove all non-digits and limit to 6 numbers (HHMMSS)
+                let numbers = this.value.replace(/[^\d]/g, '').substring(0, 6);
+                let formatted = '';
+                
+                // Build formatted string step by step
+                if (numbers.length > 0) {
+                    formatted = numbers.substring(0, 2); // HH
+                    
+                    if (numbers.length >= 3) {
+                        // Validate hours (00-23)
+                        const hours = parseInt(numbers.substring(0, 2));
+                        if (hours > 23) {
+                            numbers = '23' + numbers.substring(2);
+                            formatted = '23';
+                        }
+                        
+                        formatted += ':' + numbers.substring(2, 4); // :MM
+                        
+                        if (numbers.length >= 5) {
+                            // Validate minutes (00-59)
+                            const mins = parseInt(numbers.substring(2, 4));
+                            if (mins > 59) {
+                                numbers = numbers.substring(0, 2) + '59' + numbers.substring(4);
+                                formatted = formatted.substring(0, 3) + '59';
+                            }
+                            
+                            formatted += ':' + numbers.substring(4, 6); // :SS
+                            
+                            // Validate seconds (00-59)
+                            const secs = parseInt(numbers.substring(4, 6));
+                            if (secs > 59) {
+                                numbers = numbers.substring(0, 4) + '59';
+                                formatted = formatted.substring(0, 6) + '59';
+                            }
+                        }
+                    }
+                }
+                
+                // Update value
+                this.value = formatted;
+                lastValidValue = this.value;
+                
+                // Restore cursor position (adjusted for added colons)
+                let newCursorPos = cursorPos;
+                if (cursorPos >= 2 && numbers.length >= 2 && this.value.length > cursorPos) newCursorPos++;
+                if (cursorPos >= 4 && numbers.length >= 4 && this.value.length > cursorPos) newCursorPos++;
+                this.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Visual validation
+                const isValid = this.value.length === 8; // HH:MM:SS
+                this.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            });
+            
+            // Blur validation to ensure complete time
+            input.addEventListener('blur', function() {
+                if (this.value.length === 5) { // Missing seconds (HH:MM)
+                    this.value += ':00';
+                } else if (this.value.length === 2) { // Only hours (HH)
+                    this.value += ':00:00';
+                }
+                
+                // Final format validation
+                if(!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#e0e6ed';
+                }
+            });
+        });
+
+        // Form submission handler
+        document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+            let formValid = true;
+            const customTimeErrors = [];
+            
+            // Handle custom time inputs
+            document.querySelectorAll('.time-selector').forEach((select, index) => {
+                const container = select.closest('.mb-4').querySelector('.custom-time-container');
+                const customInput = container.querySelector('.custom-time-input');
+                
+                if (select.dataset.customSelected === 'true') {
+                    if (!customInput.value || !/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(customInput.value)) {
+                        customInput.style.borderColor = '#dc3545';
+                        customTimeErrors.push(index === 0 ? 'Start time' : 'End time');
+                        formValid = false;
+                    } else {
+                        // Create a hidden input to submit the custom time
+                        const hiddenInput = document.createElement('input');
+                        hiddenInput.type = 'hidden';
+                        hiddenInput.name = select.name;
+                        hiddenInput.value = customInput.value;
+                        select.insertAdjacentElement('afterend', hiddenInput);
+                        
+                        // Disable the original select to skip its validation
+                        select.disabled = true;
+                    }
+                }
+            });
+            
+            if (!formValid) {
+                e.preventDefault();
+                alert(`Please enter valid custom ${customTimeErrors.join(' and ')}`);
+            }
+        });
+    });
+</script>
+
+
+<!-- Attendance Sessions Script -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize modals outside the event listener
+        const confirmModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        const confirmCloseModal = new bootstrap.Modal(document.getElementById('closeConfirmModal'));
+        const updateModal = new bootstrap.Modal(document.getElementById('updateAttendanceModal'));
+        let currentSessionIdToDelete = null;
+        let currentSessionIdToClose = null;
+    
+        document.getElementById('attendanceModal').addEventListener('show.bs.modal', function () {
+            const courseProfessorId = {{ course.course_professor_id }};
+            const container = document.getElementById('attendanceSessionsContainer');
+            const emptyMsg = document.getElementById('noSessionsMessage');
+            
+
+            const loadSessions = () => {
+                container.innerHTML = '';
+                emptyMsg.style.display = 'block';
+    
+                fetch(`/get_attendance_sessions/${courseProfessorId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.sessions.length > 0) {
+                            emptyMsg.style.display = 'none';
+                            renderSessions(data.sessions);
+                            setupDeleteHandlers();
+                            setupModifyHandlers();
+                            setupCloseHandlers();
+                        }
+                    })
+                    .catch(console.error);
+            };
+    
+
+            const renderSessions = (sessions) => {
+                sessions.forEach(session => {
+                    const now = new Date();
+                    const currentTime = now.toTimeString().substring(0, 8);
+                    const currentDate = now.toISOString().split('T')[0];
+            
+                    const isActiveSession = !session.closed &&
+                        session.formatted_date === currentDate &&
+                        currentTime >= session.start_time &&
+                        currentTime <= session.end_time;
+            
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="position-relative">
+                            ${session.formatted_date}
+                            ${session.details ? `
+                                <div class="session-details-tooltip">
+                                    <i class="fas fa-info-circle ms-2 text-muted"></i>
+                                    <div class="details-content">${session.details}</div>
+                                </div>` : ''}
+                        </td>
+                        <td>${session.start_time} - ${session.end_time}</td>
+                        <td>${session.location}</td>
+                        <td>${session.group_codes || 'ALL'}</td>  <!-- Added groups display -->
+                        <td>
+                            <span class="badge ${session.closed ? 'bg-success' : 'bg-warning'}">
+                                ${session.closed ? 'Finished' : isActiveSession ? 'Happening Now' : 'Upcoming'}
+                            </span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex justify-content-end gap-3">
+                                ${session.closed ? `
+                                    <button class="action-btn checklist-btn" onclick="window.location.href='/attendance_sheet/${session.attendance_session_id}'">
+                                        <i class="fas fa-list-check me-1"></i> Checklist
+                                    </button>` : `
+                                    ${isActiveSession ? `
+                                        <button class="action-btn close-btn"  data-session-id="${session.attendance_session_id}">
+                                            <i class="fas fa-lock me-1"></i> Close List
+                                        </button>` : `
+                                        <button class="action-btn modify-btn"
+                                                data-session-id="${session.attendance_session_id}"
+                                                data-session-date="${session.formatted_date}"
+                                                data-start-time="${session.start_time}"
+                                                data-end-time="${session.end_time}"
+                                                data-location="${session.location}"
+                                                data-details="${session.details || ''}" data-bs-toggle="modal" data-bs-target="#updateAttendanceModal">
+                                            <i class="fas fa-pencil-alt me-1"></i> Modify
+                                        </button>`}
+                                <button class="action-btn delete-btn" data-session-id="${session.attendance_session_id}">
+                                    <i class="fas fa-trash-alt me-1"></i> Delete
+                                </button>`}
+                            </div>
+                        </td>`;
+                    container.appendChild(row);
+                });
+            };
+
+            const setTimeField = (fieldId, timeValue) => {
+                const input = document.getElementById(fieldId);
+                if (!input) return;
+            
+                // Normalize to HH:MM:SS format
+                let parts = timeValue.split(':');
+            
+                if (parts.length === 2) {
+                    // Add missing seconds
+                    timeValue = `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}:00`;
+                } else if (parts.length === 1) {
+                    // Only hours — unlikely, but just in case
+                    timeValue = `${parts[0].padStart(2, '0')}:00:00`;
+                } else if (parts.length === 3) {
+                    // Pad each part if needed
+                    timeValue = parts.map(p => p.padStart(2, '0')).join(':');
+                }
+            
+                // Show the container in case it's hidden
+                const container = input.closest('.custom-time-container');
+                if (container) container.style.display = 'block';
+            
+                // Set the value and validate visually
+                input.value = timeValue;
+            
+                const isValid = /^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(timeValue);
+                input.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            };
+            
+
+            const setupModifyHandlers = () => {
+                document.querySelectorAll('.modify-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        // Populate modal fields with session data
+                        document.getElementById('update_session_id').value = this.getAttribute('data-session-id');
+                        document.getElementById('update_session_date').value = this.getAttribute('data-session-date');
+                        document.getElementById('update_location').value = this.getAttribute('data-location');
+                        document.getElementById('update_details').value = this.getAttribute('data-details');
+                        
+                        // Get the groups value from the row (if available)
+                        const groupsValue = this.closest('tr').querySelector('td:nth-child(4)').textContent.trim();
+                        document.getElementById('update_groups').value = groupsValue || 'ALL';
+            
+                        const startTime = this.getAttribute('data-start-time');
+                        const endTime = this.getAttribute('data-end-time');
+                        
+                        // Just set the time input values directly
+                        setTimeField('update_start_time', startTime);
+                        setTimeField('update_end_time', endTime);
+                    });
+                });
+            };
+
+            const setupDeleteHandlers = () => {
+                document.querySelectorAll('.delete-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        currentSessionIdToDelete = this.getAttribute('data-session-id');
+                        confirmModal.show();
+                    });
+                });
+            };
+    
+            
+            document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+                if (!currentSessionIdToDelete) return;
+    
+                const btn = this;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Deleting...';
+                btn.disabled = true;
+    
+                fetch(`/delete_attendance_session/${currentSessionIdToDelete}`, { method: 'DELETE' })
+                    .then(res => {
+                        if (res.ok) {
+                            confirmModal.hide();
+                            loadSessions();
+                        } else throw new Error();
+                    })
+                    .catch(console.error)
+                    .finally(() => {
+                        btn.innerHTML = 'Delete';
+                        btn.disabled = false;
+                    });
+            });
+    
+            
+            const setupCloseHandlers = () => {
+                document.querySelectorAll('.close-btn').forEach(btn => {
+                    btn.addEventListener('click', function () {
+                        currentSessionIdToClose = this.getAttribute('data-session-id');
+                        confirmCloseModal.show();
+                    });
+                });
+            };
+
+
+            document.getElementById('confirmCloseBtn').addEventListener('click', function () {
+                if (!currentSessionIdToClose) return;
+    
+                const btn = this;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Closing...';
+                btn.disabled = true;
+    
+                fetch(`/close_attendance_session/${currentSessionIdToClose}`, { method: 'POST' })
+                    .then(res => {
+                        if (res.ok) {
+                            confirmCloseModal.hide();
+                            loadSessions();
+                        } else throw new Error();
+                    })
+                    .catch(console.error)
+                    .finally(() => {
+                        btn.innerHTML = 'Close';
+                        btn.disabled = false;
+                    });
+            });
+    
+
+
+            loadSessions();
+        });
+    });
+</script>
+ 
+
+<!-- Handling the Modification of attendance sessions -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        setupModifyHandlers();
+        
+        document.querySelectorAll('.time-selector').forEach(select => {
+            select.addEventListener('change', function() {
+                const container = this.closest('.mb-4').querySelector('.custom-time-container');
+                if(this.value === 'custom') {
+                    container.style.display = 'block';
+                    const input = container.querySelector('.custom-time-input');
+                    input.value = '';
+                    input.focus();
+                    this.dataset.customSelected = 'true';
+                } else {
+                    container.style.display = 'none';
+                    this.dataset.customSelected = 'false';
+                }
+            });
+        });
+    
+        // Time input handler
+        document.querySelectorAll('.custom-time-input').forEach(input => {
+            let lastValidValue = '';
+            
+            input.addEventListener('input', function(e) {
+                // Get cursor position before changes
+                const cursorPos = this.selectionStart;
+                
+                // Remove all non-digits and limit to 6 numbers (HHMMSS)
+                let numbers = this.value.replace(/[^\d]/g, '').substring(0, 6);
+                let formatted = '';
+                
+                // Build formatted string step by step
+                if (numbers.length > 0) {
+                    formatted = numbers.substring(0, 2); // HH
+                    
+                    if (numbers.length >= 3) {
+                        // Validate hours (00-23)
+                        const hours = parseInt(numbers.substring(0, 2));
+                        if (hours > 23) {
+                            numbers = '23' + numbers.substring(2);
+                            formatted = '23';
+                        }
+                        
+                        formatted += ':' + numbers.substring(2, 4); // :MM
+                        
+                        if (numbers.length >= 5) {
+                            // Validate minutes (00-59)
+                            const mins = parseInt(numbers.substring(2, 4));
+                            if (mins > 59) {
+                                numbers = numbers.substring(0, 2) + '59' + numbers.substring(4);
+                                formatted = formatted.substring(0, 3) + '59';
+                            }
+                            
+                            formatted += ':' + numbers.substring(4, 6); // :SS
+                            
+                            // Validate seconds (00-59)
+                            const secs = parseInt(numbers.substring(4, 6));
+                            if (secs > 59) {
+                                numbers = numbers.substring(0, 4) + '59';
+                                formatted = formatted.substring(0, 6) + '59';
+                            }
+                        }
+                    }
+                }
+                
+                // Update value
+                this.value = formatted;
+                lastValidValue = this.value;
+                
+                // Restore cursor position (adjusted for added colons)
+                let newCursorPos = cursorPos;
+                if (cursorPos >= 2 && numbers.length >= 2 && this.value.length > cursorPos) newCursorPos++;
+                if (cursorPos >= 4 && numbers.length >= 4 && this.value.length > cursorPos) newCursorPos++;
+                this.setSelectionRange(newCursorPos, newCursorPos);
+                
+                // Visual validation
+                const isValid = this.value.length === 8; // HH:MM:SS
+                this.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+            });
+            
+            // Blur validation to ensure complete time
+            input.addEventListener('blur', function() {
+                if (this.value.length === 5) { // Missing seconds (HH:MM)
+                    this.value += ':00';
+                } else if (this.value.length === 2) { // Only hours (HH)
+                    this.value += ':00:00';
+                }
+                
+                // Final format validation
+                if(!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(this.value)) {
+                    this.style.borderColor = '#dc3545';
+                } else {
+                    this.style.borderColor = '#e0e6ed';
+                }
+            });
+        });
+
+        // Form submission handler
+        document.getElementById('updateAttendanceForm').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default submission
+            
+            let isValid = true;
+            const formData = new FormData(this);
+            
+            // Handle time selectors
+            document.querySelectorAll('.time-selector').forEach((select) => {
+                const name = select.name;
+                const value = select.value;
+                
+                if (value === 'custom') {
+                    const container = select.closest('.mb-4').querySelector('.custom-time-container');
+                    const customInput = container.querySelector('.custom-time-input');
+                    const customValue = customInput.value;
+                    
+                    if (!customValue || !/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(customValue)) {
+                        customInput.style.borderColor = '#dc3545';
+                        isValid = false;
+                    } else {
+                        // Replace the original select value with custom value
+                        formData.set(name, customValue);
+                    }
+                }
+            });
+            
+            if (!isValid) {
+                alert('Please enter valid time values in the custom fields');
+                return;
+            }
+            
+            // Submit the form using fetch
+            fetch(this.action, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.reload(); // Reload the page on success
+                } else {
+                    alert('There was a problem updating the attendance session.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while updating the attendance session.');
+            });
+        });
+    });
+</script>
+
+
+<!-- Handling Log presence-->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const dayMap = {
+            "Sunday": 0, "Monday": 1, "Tuesday": 2, "Wednesday": 3,
+            "Thursday": 4, "Friday": 5, "Saturday": 6
+        };
+    
+        const now = new Date();
+        const currentDay = now.getDay();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+    
+        // Fetch room statuses when the page loads
+        let roomStatuses = {};
+        fetch('/get_room_statuses_presence')
+            .then(res => res.json())
+            .then(data => {
+                roomStatuses = data;  // Store the room statuses in the global variable
+                updateSessionBlocks(); // Update the session blocks based on room statuses
+            })
+            .catch(err => {
+                console.error('Error fetching room statuses:', err);
+            });
+    
+        // Function to update session blocks dynamically
+        function updateSessionBlocks() {
+            document.querySelectorAll(".session-block").forEach(block => {
+                const day = block.dataset.day;
+                const start = block.dataset.start;
+                const end = block.dataset.end;
+                const roomId = block.dataset.roomId;
+                const actionContainer = block.querySelector(".presence-action");
+    
+                const sessionDay = dayMap[day];
+                const [startHour, startMin] = start.split(":").map(Number);
+                const [endHour, endMin] = end.split(":").map(Number);
+                const sessionStart = startHour * 60 + startMin;
+                const sessionEnd = endHour * 60 + endMin;
+    
+                let element = "";
+    
+                // Check if session has ended, is ongoing, or upcoming
+                if (sessionDay < currentDay || (sessionDay === currentDay && sessionEnd < currentTime)) {
+                    element = `
+                        <span class="badge bg-danger-subtle text-danger fw-medium px-3 py-2 rounded-pill">
+                            <i class="fas fa-check-circle me-1"></i> Session finished
+                        </span>`;
+                } else if (sessionDay > currentDay || (sessionDay === currentDay && sessionStart > currentTime)) {
+                    element = `
+                        <span class="badge bg-warning-subtle text-warning fw-medium px-3 py-2 rounded-pill">
+                            <i class="fas fa-clock me-1"></i> Upcoming session
+                        </span>`;
+                } else if (sessionDay === currentDay && sessionStart <= currentTime && currentTime <= sessionEnd) {
+                    // Check the room status from roomStatuses object
+                    const roomStatus = roomStatuses[roomId];
+                    if (roomStatus === 'full') {
+                        element = `
+                            <span class="badge bg-secondary text-white fw-medium px-3 py-2 rounded-pill">
+                                <i class="fas fa-check-circle me-1"></i> Logged
+                            </span>`;
+                    } else {
+                        element = `<button class="btn btn-success log-presence-btn" data-room-id="${roomId}">
+                            <i class="fas fa-sign-in-alt me-1"></i> Log Presence
+                        </button>`;
+                    }
+                }
+    
+                // Update the action container with the button or status
+                actionContainer.innerHTML = element;
+            });
+        }
+    
+        document.addEventListener("click", function (e) {
+            if (e.target.classList.contains("log-presence-btn")) {
+                const roomId = e.target.dataset.roomId;
+    
+                // Log presence by calling the backend
+                fetch(`/log_professor_presence/${roomId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(res => {
+                    if (res.ok) {
+                        alert("Presence logged successfully!");
+                        e.target.innerHTML = `<i class="fas fa-check me-1"></i> Logged`;
+                        e.target.disabled = true;
+                        e.target.classList.remove("btn-success");
+                        e.target.classList.add("btn-secondary");
+                    } else {
+                        alert("Failed to log presence.");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Server error while logging presence.");
+                });
+            }
+        });
+    });
+</script>
+
+
+<!-- Handling Discussions and chats-->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // When discussions modal is shown
+        $('#discussionsModal').on('show.bs.modal', function() {
+            const courseProfessorId = {{ course.course_professor_id }};
+            loadDiscussions(courseProfessorId);
+        });
+    
+        function loadDiscussions(courseProfessorId) {
+            const discussionsList = document.getElementById('discussionsList');
+            
+            fetch(`/get_discussions/${courseProfessorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        renderDiscussions(data.discussions);
+                    } else {
+                        discussionsList.innerHTML = `
+                            <div class="alert alert-danger">
+                                ${data.message || 'Failed to load discussions'}
+                            </div>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    discussionsList.innerHTML = `
+                        <div class="alert alert-danger">
+                            Network error occurred while loading discussions
+                        </div>`;
+                });
+        }
+    
+        function renderDiscussions(discussions) {
+            const container = document.getElementById('discussionsList');
+            
+            if (discussions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No discussions yet</h5>
+                        <p class="text-muted">Start a new chat with a student</p>
+                    </div>`;
+                return;
+            }
+    
+            container.innerHTML = discussions.map(discussion => `
+                <a href="#" class="list-group-item list-group-item-action discussion-item" 
+                   data-discussion-id="${discussion.discussion_id}"
+                   data-student-id="${discussion.student_id}" data-bs-toggle="modal" data-bs-target="#discussionModal">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${discussion.first_name} ${discussion.last_name}</h6>
+                            <small class="text-muted">Student ID: ${discussion.student_id}</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">${discussion.created_at}</small>
+                            <span class="badge bg-primary rounded-pill ms-2">
+                                <i class="fas fa-comment"></i>
+                            </span>
+                        </div>
+                    </div>
+                </a>
+            `).join('');
+        }
+    
+        // When discussion modal opens, fetch and render messages
+        $('#discussionModal').on('show.bs.modal', function(event) {
+            const button = $(event.relatedTarget);
+            const discussionId = button.data('discussion-id');
+            const studentId = button.data('student-id');
+            const studentName = button.find('h6').text();
+        
+            // Store IDs in modal data
+            $('#discussionModal')
+                .data('current-discussion-id', discussionId)
+                .data('student-id', studentId);
+        
+            $('#discussionStudentName').html(`<i class="fas fa-user-graduate me-2" style="margin-right: 10px;""></i>${studentName}`);
+            loadMessages(discussionId, studentId);
+        });
+
+
+        // Fetch messages for a discussion
+        function loadMessages(discussionId, studentId) {
+            const chatContainer = $('#chatContainer');
+            const chatMessages = $('#chatMessages');
+            const chatLoading = $('#chatLoading');
+    
+            chatLoading.show();
+            chatContainer.hide();
+            chatMessages.empty();
+    
+            fetch(`/get_discussion_messages/${discussionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    chatLoading.hide();
+                    if (data.success) {
+                        renderMessages(data.messages, studentId);
+                        chatContainer.show();
+                        scrollToBottom();
+                    } else {
+                        chatMessages.html(`
+                            <div class="alert alert-danger">
+                                ${data.message || 'Failed to load messages'}
+                            </div>
+                        `);
+                        chatContainer.show();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    chatLoading.hide();
+                    chatMessages.html(`
+                        <div class="alert alert-danger">
+                            Network error loading messages
+                        </div>
+                    `);
+                    chatContainer.show();
+                });
+        }
+    
+        // Format datetime consistently
+        function formatDateTime(datetimeString) {
+            // Parse the date as UTC
+            const date = new Date(datetimeString);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            
+            return `sent ${year}-${month}-${day} at ${hours}:${minutes}`;
+        }
+
+        // Auto-scroll to bottom of chat
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('chatContainer');
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+        }
+
+
+        // Render messages in the chat area
+        function renderMessages(messages, studentId) {
+            const chatMessages = $('#chatMessages');
+            
+            if (messages.length === 0) {
+                chatMessages.html(`
+                    <div class="text-center py-5 text-muted animate__animated animate__fadeIn">
+                        <i class="fas fa-comment-slash fa-3x mb-3"></i>
+                        <p>No messages yet. Start the conversation!</p>
+                    </div>
+                `);
+                return;
+            }
+            
+            chatMessages.html(
+                messages.map(msg => {
+                    const formattedDate = formatDateTime(msg.sent_at);
+                    const isProfessor = msg.sender_type.toLowerCase() === 'professor';
+                    
+                    return `
+                        <div class="d-flex ${isProfessor ? 'justify-content-end' : 'justify-content-start'}">
+                            <div class="message-bubble ${isProfessor ? 'professor-bubble' : 'student-bubble'}">
+                                <p class="mb-1">${msg.message}</p>
+                                <small class="message-time">${formattedDate}</small>
+                            </div>
+                        </div>
+                    `;
+                }).join('')
+            );
+            
+            setTimeout(() => {
+                $('.message-bubble').addClass('show');
+                scrollToBottom();
+            }, 50);
+            
+            setTimeout(() => {
+                scrollToBottom();
+                // Ensure container is visible
+                $('#chatContainer').show();
+            }, 50);
+        }
+
+
+        $('#sendMessageBtn').click(async function() {
+            const messageInput = $('#messageInput');
+            const message = messageInput.val().trim();
+            if (!message) return;
+        
+            const discussionId = $('#discussionModal').data('current-discussion-id');
+            if (!discussionId) {
+                alert("Error: No active discussion found");
+                return;
+            }
+        
+            // Remove "No messages yet" message if it exists
+            $('.text-center.py-5.text-muted').remove();
+        
+            // Create temporary UI message
+            const tempId = 'temp-' + Date.now();
+            const chatMessages = $('#chatMessages');
+            chatMessages.append(`
+                <div id="${tempId}" class="d-flex justify-content-end">
+                    <div class="message-bubble professor-bubble show">
+                        <p class="mb-1">${message}</p>
+                        <small class="message-time">Sending...</small>
+                    </div>
+                </div>
+            `);
+            scrollToBottom();
+            messageInput.val('');
+        
+            try {
+                const response = await fetch(`/send_message/${discussionId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Get the correct time from server response if available
+                    const serverTime = data.sent_at || new Date().toISOString();
+                    $(`#${tempId} .message-time`).text(formatDateTime(serverTime));
+                } else {
+                    $(`#${tempId} .message-bubble`).removeClass('professor-bubble').addClass('alert alert-warning');
+                    $(`#${tempId} .message-time`).text(`Failed: ${data.message || 'Unknown error'}`);
+                }
+            } catch (error) {
+                console.error("Error sending:", error);
+                $(`#${tempId} .message-bubble`).removeClass('professor-bubble').addClass('alert alert-danger');
+                $(`#${tempId} .message-time`).text('Network error');
+            }
+            scrollToBottom();
+        });
+
+        // Allow pressing Enter to send
+        $('#messageInput').keypress(function(e) {
+            if (e.which === 13) {
+                e.preventDefault(); // Prevent form submission if any
+                $('#sendMessageBtn').click();
+            }
+        });
+
+        // When add chat modal is shown
+        $('#addChatModal').on('show.bs.modal', function() {
+            const studentsList = $('#nonDiscussedStudentsList');
+            const loadingIndicator = $('#studentsLoadingIndicator');
+            
+            // Reset to loading state
+            studentsList.empty();
+            loadingIndicator.show();
+            
+            const courseProfessorId = {{ course.course_professor_id }};
+            loadNonDiscussedStudents(courseProfessorId);
+        });
+
+        function loadNonDiscussedStudents(courseProfessorId) {
+            const studentsList = $('#nonDiscussedStudentsList');
+            const loadingIndicator = $('#studentsLoadingIndicator');
+            
+            fetch(`/get_discussions/${courseProfessorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    loadingIndicator.hide();
+                    if (data.success) {
+                        renderNonDiscussedStudents(data.non_discussed_students || []);
+                    } else {
+                        studentsList.html(`
+                            <div class="alert alert-danger">
+                                ${data.message || 'Failed to load students'}
+                            </div>`);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    loadingIndicator.hide();
+                    studentsList.html(`
+                        <div class="alert alert-danger">
+                            Network error occurred while loading students
+                        </div>`);
+                });
+        }
+
+        function renderNonDiscussedStudents(students) {
+            const container = $('#nonDiscussedStudentsList');
+            
+            if (students.length === 0) {
+                container.html(`
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-check fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">All students have active discussions</h5>
+                        <p class="text-muted">No new students available</p>
+                    </div>`);
+                return;
+            }
+            
+            container.html(students.map(student => `
+                <div class="student-to-add list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${student.first_name} ${student.last_name}</h6>
+                        <small class="text-muted">Student ID: ${student.student_id}</small>
+                    </div>
+                    <button class="add-chat-btn" data-student-id="${student.student_id}">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            `).join(''));
+            
+            // Initialize button handlers
+            handleAddChatButtons();
+        }
+
+        function handleAddChatButtons() {
+            $(document).on('click', '.add-chat-btn', function() {
+                const button = $(this);
+                const studentId = button.data('student-id');
+                const courseProfessorId = {{ course.course_professor_id }};
+                
+                button.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+                
+                fetch('/create_discussion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        course_professor_id: courseProfessorId,
+                        student_id: studentId 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Close the add chat modal
+                        $('#addChatModal').modal('hide');
+                        
+                        // Refresh the discussions list
+                        loadDiscussions(courseProfessorId);
+                        
+                        // Show success message
+                        alert('Discussion created successfully!');
+                    } else {
+                        alert('Error: ' + (data.message || 'Failed to create discussion'));
+                        button.prop('disabled', false).html('<i class="fas fa-plus"></i>');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Network error occurred');
+                    button.prop('disabled', false).html('<i class="fas fa-plus"></i>');
+                });
+            });
+        }
+    });
+
+</script>
+
+
+<!-- Handling the announcements-->
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const courseProfessorId = {{ course.course_professor_id }};
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteAnnouncementModal'));
+        let announcements = [];
+        let announcementToDelete = null;
+        
+        // Load announcements when page loads
+        loadAnnouncements(courseProfessorId);
+    
+        function loadAnnouncements(courseProfessorId) {
+            fetch(`/get_announcements/${courseProfessorId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        announcements = data.announcements || [];
+                        renderAnnouncements(announcements);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading announcements:', error);
+                });
+        }
+    
+        function renderAnnouncements(announcements) {
+            const container = document.getElementById('announcementsContainer');
+            const countBadge = document.getElementById('announcementCount');
+            
+            countBadge.textContent = announcements.length;
+            
+            if (announcements.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-5 announcement-empty-state">
+                        <i class="fas fa-bullhorn fa-3x mb-3"></i>
+                        <h5>No announcements yet</h5>
+                        <p>Create your first announcement to share with students</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const sortedAnnouncements = [...announcements].sort((a, b) => 
+                new Date(b.created_at) - new Date(a.created_at)
+            );
+            
+            container.innerHTML = sortedAnnouncements.map(announcement => `
+                <div class="mb-4 p-4 bg-white rounded-3 border" data-announcement-id="${announcement.announcement_id}">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <h4 class="mb-0 fw-bold">${announcement.title}</h4>
+                        <small class="text-muted">${formatDateTime(announcement.created_at)}</small>
+                    </div>
+                    <div class="mb-3 announcement-content">${announcement.content}</div>
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-outline-danger delete-announcement-btn">
+                            <i class="fas fa-trash-alt me-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Attach delete handlers
+            document.querySelectorAll('.delete-announcement-btn').forEach(btn => {
+                btn.addEventListener('click', function(event) {
+                    const announcementCard = event.target.closest('[data-announcement-id]');
+                    announcementToDelete = announcementCard.dataset.announcementId;
+                    deleteModal.show();
+                });
+            });
+        }
+
+        function formatDateTime(datetimeString) {
+            const date = new Date(datetimeString);
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            const hours = String(date.getUTCHours()).padStart(2, '0');
+            const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+            
+            return `posted ${year}-${month}-${day} at ${hours}:${minutes}`;
+        }
+
+        // Handle announcement creation
+        document.getElementById('submitAnnouncement').addEventListener('click', async function() {
+            const title = document.getElementById('announcementTitle').value.trim();
+            const content = document.getElementById('announcementContent').value.trim();
+            const submitBtn = this;
+
+            if (!title || !content) {
+                alert('Please fill in both title and content');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Publishing...`;
+
+            try {
+                const response = await fetch('/create_announcement', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({course_professor_id: courseProfessorId, title, content})
+                });
+                const data = await response.json();
+
+                if (data.success && data.announcement) {
+                    announcements.unshift(data.announcement);
+                    renderAnnouncements(announcements);
+                    $('#announcementModal').modal('hide');
+                    document.getElementById('announcementForm').reset();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fas fa-paper-plane me-2"></i>Publish Announcement`;
+            }
+        });
+
+        // Handle announcement deletion
+        document.getElementById('deleteAnnouncementBtn').addEventListener('click', async function() {
+            if (!announcementToDelete) return;
+            
+            const deleteBtn = this;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Deleting...`;
+
+            try {
+                const response = await fetch(`/delete_announcement/${announcementToDelete}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    announcements = announcements.filter(a => a.announcement_id != announcementToDelete);
+                    renderAnnouncements(announcements);
+                    deleteModal.hide();
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to delete'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Network error occurred');
+            } finally {
+                announcementToDelete = null;
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = 'Delete';
+            }
+        });
+
+        // Reset forms when modals close
+        document.getElementById('announcementModal').addEventListener('hidden.bs.modal', function() {
+            document.getElementById('announcementForm').reset();
+        });
+    });
+</script>
+
+
+<!-- Handling Attendance Analytics Dashboard-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the analytics modal
+    const analyticsModal = document.getElementById('attendanceAnalyticsModal');
+    const bsAnalyticsModal = new bootstrap.Modal(analyticsModal);
+    
+    // Store chart instances
+    let attendanceDonutChart = null;
+    let attendanceGaugeChart = null;
+    let sessionPieChart = null; 
+    let attendanceLineChart = null;
+    let groupComparisonChart = null;
+    let attendanceBubbleChart = null;
+
+    
+    analyticsModal.addEventListener('show.bs.modal', function() {
+        // Get the course_professor_id
+        const courseProfessorId = {{ course.course_professor_id }};
+        
+        // Show loading states
+        $('#donutPercentage').text('Loading...');
+        $('#gaugePercentage').text('Loading...');
+        $('#finishedCount, #activeCount, #upcomingCount').text('Loading...');
+        $('#actualCount, #expectedCount, #extraCount, #totalStudents, #attendedStudents').text('0');
+        
+        // Clear previous charts if exist
+        if (attendanceDonutChart) attendanceDonutChart.destroy();
+        if (attendanceGaugeChart) attendanceGaugeChart.destroy();
+        if (sessionPieChart) sessionPieChart.destroy();
+        if (attendanceLineChart) attendanceLineChart.destroy();
+        
+        // Fetch all data in parallel
+        Promise.all([
+            fetch(`/get_attendance_analytics/${courseProfessorId}`).then(handleResponse),
+            fetch(`/get_attendance_sessions/${courseProfessorId}`).then(handleResponse)
+        ]).then(([analyticsData, sessionsData]) => {
+            if (analyticsData.success) {
+                updateDonutChart(analyticsData.data);
+                updateGaugeChart(analyticsData.data);
+                // Ensure we have the correct data structure for line chart
+                if (analyticsData.data.attendance_rate && analyticsData.data.attendance_rate.session_details) {
+                    updateAttendanceLineChart(analyticsData.data.attendance_rate.session_details);
+                    updateAttendanceBubbleChart(analyticsData.data.attendance_rate.session_details);
+                } else {
+                    console.error("Missing session_details in analytics data");
+                }
+                updateGroupComparisonChart(analyticsData.data.group_comparison);
+                if (analyticsData.data.top_attendees && analyticsData.data.top_absentees) {
+                    updateTopPerformersTables(analyticsData.data.top_attendees, analyticsData.data.top_absentees);
+                }
+            }
+            if (sessionsData.success) {
+                updateSessionPieChart(sessionsData.sessions);
+            }
+        }).catch(error => {
+            console.error('Error:', error);
+            $('#donutPercentage, #gaugePercentage, #finishedCount, #activeCount, #upcomingCount').text('Error');
+        });
+        
+        function handleResponse(response) {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.json();
+        }
+    });
+    
+    function updateDonutChart(data) {
+        // Update the text elements
+        $('#donutPercentage').text(data.percentage + '%');
+        $('#actualCount').text(data.actual_attendance);
+        $('#expectedCount').text(data.expected_sessions);
+        $('#extraCount').text(data.extra_sessions);
+        
+        // Calculate chart values
+        const attended = Math.min(data.actual_attendance, data.expected_sessions);
+        const remaining = Math.max(0, data.expected_sessions - attended);
+        const extra = data.extra_sessions;
+        
+        // Get canvas element
+        const ctx = document.getElementById('attendanceDonutChart').getContext('2d');
+        
+        // Create new chart
+        attendanceDonutChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Attendance Recorded', 'Attendance Not Recorded', 'Extra Sessions'],
+                datasets: [{
+                    data: [attended, remaining, extra],
+                    backgroundColor: [
+                        'rgba(252, 37, 180, 0.8)',  // Pink
+                        'rgba(37, 117, 252, 0.8)',   // Blue
+                        'rgba(108, 117, 125, 0.5)'   // Gray
+                    ],
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+    }
+    
+    function updateGaugeChart(data) {
+        const rateData = data.attendance_rate;
+        const percentage = rateData.overall_rate;
+        
+        // Update text elements
+        $('#gaugePercentage').text(percentage + '%');
+        $('#totalStudents').text(rateData.total_students);
+        $('#attendedStudents').text(rateData.attended_students);
+        
+        // Get canvas and setup
+        const ctx = document.getElementById('attendanceGaugeChart').getContext('2d');
+        if (attendanceGaugeChart) attendanceGaugeChart.destroy();
+        
+        // Create gauge chart
+        attendanceGaugeChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                datasets: [{
+                    data: [percentage, 100 - percentage],
+                    backgroundColor: [
+                        'rgba(37, 117, 252, 0.8)',
+                        'rgba(225, 225, 225, 0.3)'
+                    ],
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: -90,
+                    cutout: '75%'  
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { enabled: false }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
+            }
+        });
+        
+        // Draw needle after chart is created
+        setTimeout(() => {
+            drawNeedle(ctx, percentage, attendanceGaugeChart);
+        }, 100);
+    }
+    
+    // Function to draw needle on gauge
+    function drawNeedle(ctx, percentage, chart) {
+        // Get chart dimensions
+        const chartArea = chart.chartArea;
+        const width = chart.width;
+        const height = chart.height;
+        
+        // Calculate center point (slightly below center of chart for gauge)
+        const centerX = width / 2;
+        const centerY = height * 0.8; // Position needle base at 80% of height
+        
+        // Calculate needle parameters
+        const needleLength = height * 0.35; // Needle length proportional to chart height
+        const needleBaseWidth = 6; // Width of needle at base
+        const needleTipWidth = 1; // Width at tip
+        
+        // Calculate rotation angle based on percentage (from -90° to +90°)
+        // Convert percentage (0-100) to radians (-π/2 to π/2)
+        const angle = (percentage / 100) * Math.PI;
+        
+        // Save current drawing state
+        ctx.save();
+        
+        // Translate to the center point where needle will rotate
+        ctx.translate(centerX, centerY);
+        
+        // Rotate context based on percentage
+        ctx.rotate(angle - Math.PI/2); // Adjust by -90° (π/2) to start at left
+        
+        // Begin drawing needle
+        ctx.beginPath();
+        
+        // Draw needle shape (triangle)
+        ctx.moveTo(0, -needleBaseWidth/2); // Left side of base
+        ctx.lineTo(needleLength, 0); // Tip
+        ctx.lineTo(0, needleBaseWidth/2); // Right side of base
+        ctx.closePath();
+        
+        // Set needle style and fill
+        ctx.fillStyle = '#fc25b4'; // Pink color matching your theme
+        ctx.fill();
+        
+        // Add subtle shadow
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+        
+        // Restore drawing state
+        ctx.restore();
+        
+        // Draw center circle (needle pivot)
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#2575fc'; // Blue color matching theme
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+        ctx.fill();
+        
+        // Draw inner circle for more polished look
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+        ctx.fill();
+    }
+
+    function updateSessionPieChart(sessions) {
+        // Initialize counters
+        let finishedCount = 0;
+        let activeCount = 0;
+        let upcomingCount = 0;
+        
+        // Get current time
+        const now = new Date();
+        const currentTime = now.toTimeString().substring(0, 8);
+        const currentDate = now.toISOString().split('T')[0];
+        
+        // Count session statuses
+        sessions.forEach(session => {
+            const sessionDate = session.formatted_date;
+            const startTime = session.start_time;
+            const endTime = session.end_time;
+            
+            // Check if session is finished
+            if (session.closed || new Date(`${sessionDate}T${endTime}`) < now) {
+                finishedCount++;
+            } 
+            // Check if session is happening now
+            else if (sessionDate === currentDate && 
+                    currentTime >= startTime && 
+                    currentTime <= endTime) {
+                activeCount++;
+            } 
+            // Otherwise it's upcoming
+            else {
+                upcomingCount++;
+            }
+        });
+        
+        // Update the count displays
+        $('#finishedCount').text(finishedCount);
+        $('#activeCount').text(activeCount);
+        $('#upcomingCount').text(upcomingCount);
+        
+        // Get canvas element
+        const ctx = document.getElementById('sessionPieChart').getContext('2d');
+        
+        // Handle case when there are no sessions
+        const totalSessions = finishedCount + activeCount + upcomingCount;
+        const showEmptyState = totalSessions === 0;
+        
+        // Create new chart with proper animations
+        sessionPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Finished', 'Happening Now', 'Upcoming'],
+                datasets: [{
+                    data: showEmptyState ? [1] : [finishedCount, activeCount, upcomingCount],
+                    backgroundColor: showEmptyState ? 
+                        ['rgba(108, 117, 125, 0.1)'] : // Gray for empty state
+                        [
+                            'rgba(37, 117, 252, 0.8)',  // blue
+                            'rgba(253, 126, 20, 0.8)',   // orange
+                            'rgba(252, 37, 180, 0.8)'    // pink
+                        ],
+                    borderWidth: 0,
+                    cutout: '70%'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        enabled: !showEmptyState, // Disable tooltip for empty state
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    animateScale: true,
+                    animateRotate: true,
+                    duration: 1000
+                }
+            }
+        });
+    }
+
+    function updateAttendanceLineChart(sessionDetails) {
+        console.log("Line chart data received:", sessionDetails);
+        
+        // Destroy previous chart if exists
+        if (attendanceLineChart) {
+            attendanceLineChart.destroy();
+            attendanceLineChart = null;
+        }
+        
+        // Check if we have valid data
+        if (!sessionDetails || !Array.isArray(sessionDetails) || sessionDetails.length === 0) {
+            console.error("No valid session details data available");
+            return;
+        }
+        
+        // Get canvas element
+        const ctx = document.getElementById('attendanceLineChart');
+        if (!ctx) {
+            console.error("Canvas element not found");
+            return;
+        }
+        
+        // First sort all sessions by date
+        const sortedSessions = [...sessionDetails].sort((a, b) => {
+            return new Date(a.session_date) - new Date(b.session_date);
+        });
+        
+        // Group data by group combination
+        const groups = {};
+        sortedSessions.forEach(session => {
+            const group = session.group_codes || 'ALL';
+            if (!groups[group]) {
+                groups[group] = [];
+            }
+            groups[group].push({
+                x: session.session_date,  // Keep as string but sorted
+                y: session.attendance_rate
+            });
+        });
+        
+        // Get all unique dates in order for the x-axis
+        const uniqueDates = [...new Set(sortedSessions.map(s => s.session_date))];
+        
+        // Prepare datasets
+        const colors = ['#fc25b4', '#2575fc', '#6f42c1', '#fd7e14', '#20c997'];
+        const datasets = Object.keys(groups).map((group, i) => ({
+            label: group,
+            data: groups[group],
+            borderColor: colors[i % colors.length],
+            backgroundColor: colors[i % colors.length] + '20',
+            borderWidth: 2,
+            tension: 0.1,
+            fill: false
+        }));
+        
+        // Create the chart with time scale
+        attendanceLineChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'category',  // Keep as category but with sorted dates
+                        labels: uniqueDates,
+                        title: {
+                            display: true,
+                            text: 'Session Date'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                // Format date as DD/MM if you prefer
+                                const date = new Date(uniqueDates[value]);
+                                return date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' });
+                            }
+                        }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Attendance Rate (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${context.parsed.y}%`;
+                            },
+                            title: function(context) {
+                                return context[0].label; // Shows full date in tooltip
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        console.log("Line chart created successfully with sorted dates");
+    }
+
+    function updateGroupComparisonChart(groupData) {
+        console.log("Group comparison data:", groupData);
+        
+        // Destroy previous chart if exists
+        if (groupComparisonChart) {
+            groupComparisonChart.destroy();
+            groupComparisonChart = null;
+        }
+        
+        // Check if we have valid data
+        if (!groupData || !Array.isArray(groupData) || groupData.length === 0) {
+            console.log("No group comparison data available");
+            return;
+        }
+        
+        // Get canvas element
+        const ctx = document.getElementById('groupComparisonChart');
+        if (!ctx) {
+            console.error("Group comparison canvas not found");
+            return;
+        }
+        
+        // Prepare data for Chart.js
+        const labels = groupData.map(group => group.group_name);
+        const attendedData = groupData.map(group => group.avg_attended);
+        const absentData = groupData.map(group => group.avg_absent);
+        const sessionCounts = groupData.map(group => group.sessions_counted);
+        
+        // Use the same color scheme as your other charts
+        const colors = ['#2575fc', '#fc25b4', '#6f42c1', '#fd7e14', '#20c997'];
+        
+        // Create the chart
+        groupComparisonChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Average Attended',
+                        data: attendedData,
+                        backgroundColor: colors[0], // Blue
+                        borderColor: colors[0],
+                        borderWidth: 0
+                    },
+                    {
+                        label: 'Average Absent',
+                        data: absentData,
+                        backgroundColor: colors[1], // Pink
+                        borderColor: colors[1],
+                        borderWidth: 0
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        stacked: true,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            boxWidth: 12,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: (context) => {
+                                const index = context[0].dataIndex;
+                                return `Sessions counted: ${sessionCounts[index]}`;
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000
+                }
+            }
+        });
+    }
+    
+    function updateAttendanceBubbleChart(sessionDetails) {
+        console.log("Bubble chart data received:", sessionDetails);
+        
+        // Destroy previous chart if exists
+        if (attendanceBubbleChart) {
+            attendanceBubbleChart.destroy();
+            attendanceBubbleChart = null;
+        }
+        
+        // Check if we have valid data
+        if (!sessionDetails || !Array.isArray(sessionDetails) || sessionDetails.length === 0) {
+            console.error("No valid session details data available for bubble chart");
+            return;
+        }
+        
+        // Get canvas element
+        const ctx = document.getElementById('attendanceBubbleChart');
+        if (!ctx) {
+            console.error("Bubble chart canvas not found");
+            return;
+        }
+    
+        // Generate unique colors for each group combination
+        const colorPalette = [
+            'rgba(252, 37, 180, 0.7)',   // Pink
+            'rgba(37, 117, 252, 0.7)',   // Blue
+            'rgba(253, 126, 20, 0.7)',   // Orange
+            'rgba(111, 66, 193, 0.7)',   // Purple
+            'rgba(32, 201, 151, 0.7)',   // Teal
+            'rgba(220, 53, 69, 0.7)',    // Red
+            'rgba(255, 193, 7, 0.7)'     // Yellow
+        ];
+    
+        // Create a mapping of group_codes to colors
+        const groupColorMap = {};
+        let colorIndex = 0;
+        
+        // Prepare datasets - one dataset per unique group_code for legend
+        const datasets = [];
+        const uniqueGroups = [...new Set(sessionDetails.map(s => s.group_codes))];
+        
+        uniqueGroups.forEach(group => {
+            const color = colorPalette[colorIndex % colorPalette.length];
+            groupColorMap[group] = color;
+            colorIndex++;
+            
+            const groupSessions = sessionDetails.filter(s => s.group_codes === group);
+            
+            datasets.push({
+                label: group,
+                data: groupSessions.map(session => ({
+                    x: session.total_students,
+                    y: session.attendance_rate,
+                    r: Math.max(8, Math.min(30, session.total_students * 1.5)),
+                    session_id: session.session_id,
+                    session_date: session.session_date,
+                    attended_count: session.attended_count
+                })),
+                backgroundColor: color,
+                borderColor: color.replace('0.7', '1'),
+                borderWidth: 1,
+                hoverBackgroundColor: color.replace('0.7', '0.9'),
+                hoverBorderColor: 'rgba(0, 0, 0, 0.8)'
+            });
+        });
+    
+        // Create the chart
+        attendanceBubbleChart = new Chart(ctx, {
+            type: 'bubble',
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Number of Students'
+                        },
+                        min: 0,
+                        suggestedMax: Math.max(...sessionDetails.map(s => s.total_students)) * 1.2,
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        min: 0,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Attendance Rate (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            boxWidth: 10,
+                            padding: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const data = context.raw;
+                                return [
+                                    `Date: ${data.session_date}`,
+                                    `Students: ${context.dataset.data[context.dataIndex].x}`,
+                                    `Attendance: ${data.attended_count}/${context.dataset.data[context.dataIndex].x} (${data.y}%)`
+                                ];
+                            }
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000
+                }
+            }
+        });
+    }
+
+    function updateTopPerformersTables(attendees, absentees) {
+        // Clear previous tables
+        $('#topAttendeesTable tbody').empty();
+        $('#topAbsenteesTable tbody').empty();
+    
+        // Sort attendees by attendance rate (descending) and then by name
+        const sortedAttendees = [...attendees].sort((a, b) => {
+            if (b.attendance_rate !== a.attendance_rate) {
+                return b.attendance_rate - a.attendance_rate;
+            }
+            return a.student_name.localeCompare(b.student_name);
+        });
+    
+        // Sort absentees by attendance rate (ascending) and then by name
+        const sortedAbsentees = [...absentees].sort((a, b) => {
+            if (a.attendance_rate !== b.attendance_rate) {
+                return a.attendance_rate - b.attendance_rate;
+            }
+            return a.student_name.localeCompare(b.student_name);
+        });
+    
+        // Populate Top Attendees with all data
+        sortedAttendees.forEach((student, index) => {
+            const row = `
+                <tr>
+                    <td class="fw-bold">${index + 1}</td>
+                    <td class="text-nowrap">${student.student_name}</td>
+                    <td>${student.group}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1" style="height: 20px;">
+                                <div class="progress-bar bg-success" 
+                                     role="progressbar" 
+                                     style="width: ${student.attendance_rate}%" 
+                                     aria-valuenow="${student.attendance_rate}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="ms-2 fw-semibold" style="min-width: 50px; text-align: right;">
+                                ${student.attendance_rate}%
+                            </small>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            ${student.attended_sessions}/${student.expected_sessions} sessions
+                        </small>
+                    </td>
+                </tr>
+            `;
+            $('#topAttendeesTable tbody').append(row);
+        });
+    
+        // Populate Top Absentees with all data
+        sortedAbsentees.forEach((student, index) => {
+            const row = `
+                <tr>
+                    <td class="fw-bold">${index + 1}</td>
+                    <td class="text-nowrap">${student.student_name}</td>
+                    <td>${student.group}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1" style="height: 20px;">
+                                <div class="progress-bar bg-danger" 
+                                     role="progressbar" 
+                                     style="width: ${student.attendance_rate}%" 
+                                     aria-valuenow="${student.attendance_rate}" 
+                                     aria-valuemin="0" 
+                                     aria-valuemax="100">
+                                </div>
+                            </div>
+                            <small class="ms-2 fw-semibold" style="min-width: 50px; text-align: right;">
+                                ${student.attendance_rate}%
+                            </small>
+                        </div>
+                        <small class="text-muted d-block mt-1">
+                            ${student.attended_sessions}/${student.expected_sessions} sessions
+                        </small>
+                    </td>
+                </tr>
+            `;
+            $('#topAbsenteesTable tbody').append(row);
+        });
+    }
+    
+    // Clean up when modal is hidden
+    analyticsModal.addEventListener('hidden.bs.modal', function() {
+        if (attendanceDonutChart) {
+            attendanceDonutChart.destroy();
+            attendanceDonutChart = null;
+        }
+        if (attendanceGaugeChart) {
+            attendanceGaugeChart.destroy();
+            attendanceGaugeChart = null;
+        }
+        if (sessionPieChart) {
+            sessionPieChart.destroy();
+            sessionPieChart = null;
+        }
+        if (attendanceLineChart) {
+            attendanceLineChart.destroy();
+            attendanceLineChart = null;
+        }
+        if (groupComparisonChart) {
+            groupComparisonChart.destroy();
+            groupComparisonChart = null;
+        }
+        if (attendanceBubbleChart) {
+            attendanceBubbleChart.destroy();
+            attendanceBubbleChart = null;
+        }
+    });
+});
+</script>
+
+
+
+<!-- Handling Quizzes-->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const courseProfessorId = {{ course.course_professor_id }};
+        const quizzesContainer = document.getElementById('quizzesContainer');
+        const quizTemplate = document.getElementById('quizTemplate');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const quizCount = document.getElementById('quizCount');
+    
+        // Fetch quizzes from the endpoint
+        fetch(`/get_quizzes/${courseProfessorId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadingSpinner.remove();
+                    
+                    if (data.quizzes.length > 0) {
+                        quizCount.textContent = data.quizzes.length;
+                        
+                        data.quizzes.forEach(quiz => {
+                            const quizElement = quizTemplate.cloneNode(true);
+                            quizElement.classList.remove('d-none');
+                            
+                            // Set border color based on status
+                            const cardElement = quizElement.querySelector('.card');
+                            if (quiz.status === 'upcoming') {
+                                cardElement.style.borderLeftColor = '#6a11cb';
+                            } else if (quiz.status === 'active') {
+                                cardElement.style.borderLeftColor = '#ffc107';
+                            } else if (quiz.status === 'completed') {
+                                cardElement.style.borderLeftColor = '#198754';
+                            }
+                            
+                            // Fill in quiz details
+                            quizElement.querySelector('.quiz-title').textContent = quiz.title;
+                            quizElement.querySelector('.quiz-description').textContent = quiz.description;
+                            quizElement.querySelector('.quiz-date').textContent = quiz.formatted_date;
+                            quizElement.querySelector('.quiz-time').textContent = quiz.formatted_start_time;
+                            quizElement.querySelector('.quiz-duration').textContent = quiz.duration;
+                            quizElement.querySelector('.quiz-grade').textContent = quiz.grade;
+                            
+                            // Set status badge
+                            const statusBadge = quizElement.querySelector('.quiz-status');
+                            statusBadge.textContent = quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1);
+                            statusBadge.classList.add(`quiz-status`, quiz.status);
+                            
+                            // Add appropriate buttons based on status
+                            const actionsContainer = quizElement.querySelector('.quiz-actions');
+                            
+                            if (quiz.status === 'upcoming') {
+                                // Add modify and delete buttons for upcoming quizzes
+                                actionsContainer.innerHTML = `
+                                    <button class="btn btn-sm btn-outline-primary modify-btn" data-quiz-id="${quiz.quiz_id}">
+                                        <i class="fas fa-edit me-1"></i> Modify
+                                    </button>
+                                    <div style="width: 10px; height:7px;"></div>
+                                    <button class="btn btn-sm btn-outline-danger delete-btn" data-quiz-id="${quiz.quiz_id}">
+                                        <i class="fas fa-trash me-1"></i> Delete
+                                    </button>
+                                `;
+                            } else if (quiz.status === 'active') {
+                                // Add indicator for active quizzes
+                                actionsContainer.innerHTML = `
+                                    <span class="badge bg-warning text-dark px-3 py-2" style="background: linear-gradient(135deg, #f46b45 0%, #eea849 100%);">
+                                        <i class="fas fa-running me-1"></i> In Progress
+                                    </span>
+                                `;
+                            } else if (quiz.status === 'completed') {
+                                // Add view, grades, and analytics buttons for completed quizzes
+                               actionsContainer.innerHTML = `
+                                <a href="/view_quiz/${quiz.quiz_id}" target="_blank" class="btn btn-sm btn-outline-primary view-btn" data-quiz-id="${quiz.quiz_id}">
+                                    <i class="fas fa-eye me-1"></i> View
+                                </a>
+                                <div style="width: 10px; height:7px;"></div>
+                                <a href="/quiz_grades/${quiz.quiz_id}/${courseProfessorId}/{{ course.course_code }}" class="btn btn-sm btn-outline-success grades-btn" data-quiz-id="${quiz.quiz_id}">
+                                    <i class="fas fa-chart-bar me-1"></i> Grades
+                                </a>
+                                <div style="width: 10px; height:7px;"></div>
+                                <button class="btn btn-sm btn-outline-info analytics-btn" style="background: linear-gradient(135deg, #fc25b4 0%, #2575fc 100%); color:white;" data-quiz-id="${quiz.quiz_id}"
+                                    data-bs-toggle="modal" data-bs-target="#quizAnalyticsModal">
+                                    <i class="fas fa-chart-line me-1"></i> Analytics
+                                </button>
+                                `;
+                            }
+                            
+                            quizzesContainer.appendChild(quizElement);
+                        });
+                    } else {
+                        quizzesContainer.innerHTML = `
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-clipboard-list fa-3x mb-3"></i>
+                                <h5>No quizzes yet</h5>
+                                <p>Create your first quiz to assess your students</p>
+                            </div>
+                        `;
+                    }
+                } else {
+                    loadingSpinner.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i> Failed to load quizzes. Please try again later.
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching quizzes:', error);
+                loadingSpinner.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Failed to load quizzes. Please try again later.
+                    </div>
+                `;
+            });
+            
+        // Event delegation for buttons (since they're dynamically added)
+        quizzesContainer.addEventListener('click', function(e) {
+            const quizId = e.target.closest('[data-quiz-id]')?.getAttribute('data-quiz-id');
+            if (!quizId) return;
+            
+            if (e.target.closest('.modify-btn')) {
+                // Handle modify button click
+                console.log('Modify quiz:', quizId);
+                // window.location.href = `/modify_quiz/${quizId}`;
+            } else if (e.target.closest('.delete-btn')) {
+                // Handle delete button click
+                if (confirm('Are you sure you want to delete this quiz?')) {
+                    console.log('Delete quiz:', quizId);
+                    // Add AJAX call to delete quiz
+                }
+            } else if (e.target.closest('.view-btn')) {
+                // Prevent default if it's a link
+                e.preventDefault();
+                const href = e.target.closest('.view-btn').getAttribute('href');
+                window.open(href, '_blank');
+            
+            } else if (e.target.closest('.analytics-btn')) {
+                // Handle analytics button click
+                console.log('View analytics for quiz:', quizId);
+                // window.location.href = `/quiz_analytics/${quizId}`;
+            }
+        });
+    });
+</script>
+
+
+
+    
+{% endblock %}

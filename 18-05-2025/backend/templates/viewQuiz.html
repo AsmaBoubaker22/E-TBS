@@ -1,0 +1,545 @@
+{% extends "theme.html" %} 
+
+{% block title %}View Quiz{% endblock %}
+
+{% block content %}
+<style>
+    .question-card {
+        background-color: white;
+        transition: all 0.2s;
+    }
+    .question-card:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .choice-input {
+        transform: scale(1.2);
+    }
+    #quizPaperContainer {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    .quiz-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .detail-item {
+        display: flex;
+        align-items: center;
+    }
+    .detail-icon {
+        margin-right: 0.5rem;
+        color: #6a11cb;
+    }
+    .correct-answer {
+        color: #28a745;
+        font-weight: bold;
+    }
+    .correct-answer-marker {
+        color: #28a745;
+        font-size: 14px;
+        pointer-events: none;
+    }
+    .form-check {
+        position: relative;
+    }
+    /* Print-specific styles */
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+        #quizPaperContainer, #quizPaperContainer * {
+            visibility: visible;
+        }
+        #quizPaperContainer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+            border-radius: 0;
+        }
+        .no-print {
+            display: none !important;
+        }
+    }
+
+    
+    /* PDF-specific styling */
+    .pdf-optimized {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 1px !important; 
+        margin: 0 !important;    
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+    .pdf-optimized .quiz-title {
+        font-size: 20px !important;  /* Slightly smaller */
+        margin-bottom: 10px !important;
+    }
+    .pdf-optimized .question-text {
+        font-size: 15px !important;
+    }
+    .pdf-optimized .choice-text {
+        font-size: 13px !important;
+    }
+    .pdf-optimized img {
+        max-height: 50px !important;  /* Smaller logo */
+    }
+    .pdf-optimized .card-header,
+    .pdf-optimized .card-body {
+        padding: 10px !important;  /* Reduced padding */
+    }
+    .pdf-optimized .detail-item {
+        padding: 4px !important;   /* Reduced padding */
+    }
+    .pdf-optimized .question-card .badge {
+        font-size: 10px !important;
+        padding: 3px 6px !important;
+        margin-top: 2px !important;
+    }
+
+
+    .toast {
+        width: 350px;
+        max-width: 100%;
+        font-size: 0.875rem;
+        pointer-events: auto;
+        margin-bottom: 0.5rem;
+    }
+    
+    .toast.show {
+        opacity: 1;
+    }
+    
+    .toast.hide {
+        opacity: 0;
+        transition: opacity 0.15s ease-in-out;
+    }
+    
+</style>
+
+<div class="container my-5">
+    <!-- Quiz Paper Container -->
+    <div id="quizPaperContainer" class="bg-white p-0 shadow-lg" style="border-radius: 8px;">
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading quiz...</p>
+        </div>
+    </div>
+
+    <!-- Action Buttons (will be shown after loading) -->
+    <div id="actionButtons" class="d-none mt-4 text-center">
+        <button id="checkAnswersBtn" class="btn btn-primary btn-lg mx-2 px-4">
+            <i class="fas fa-check-circle me-2" style="margin: 10px;"></i>Check Answers
+        </button>
+        <button id="downloadPdfBtn" class="btn btn-outline-secondary btn-lg mx-2 px-4">
+            <i class="fas fa-file-pdf me-2" style="margin: 10px;"></i>Download PDF
+        </button>
+        <button id="publishQuizBtn" class="btn  btn-success btn-lg mx-2 px-4">
+            <i class="fas fa-cloud-upload-alt me-2" style="margin: 10px;"></i>Publish Solution
+        </button>
+    </div>
+</div>
+
+<!-- Quiz Paper Template -->
+<div id="quizPaperTemplate" class="d-none">
+    <!-- University Header -->
+    <div class="p-4 border-bottom" style="background-color: #f8f9fa;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center">  <!-- Flex container for logo + text -->
+                <img src="{{ url_for('static', filename='tbs.png') }}" 
+                    alt="Tunis Business School Logo" 
+                    style="height: 70px; width: auto; margin-right: 15px;">
+                <div>
+                    <h4 class="mb-0 text-primary fw-bold">Tunis Business School</h4>
+                    <small class="text-muted">Examination Paper</small>
+                </div>
+            </div>
+            <div class="text-end">
+                <small class="d-block text-muted">Quiz ID: <span class="quiz-id fw-bold"></span></small>
+                <small class="d-block text-muted">Created: <span class="quiz-created-at fw-bold"></span></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Header -->
+    <div class="p-4 border-bottom">
+        <h1 class="quiz-title text-center mb-3" style="color: #2c3e50;"></h1>
+        <p class="quiz-description text-center text-muted mb-4"></p>
+        
+        <!-- Quiz Details Grid -->
+        <div class="quiz-details-grid px-4 mb-3">
+            <div class="detail-item">
+                <i class="far fa-calendar-alt detail-icon"></i>
+                <div>
+                    <div class="text-muted small">Date</div>
+                    <div class="fw-bold"><span class="quiz-date"></span></div>
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <i class="far fa-clock detail-icon"></i>
+                <div>
+                    <div class="text-muted small">Time</div>
+                    <div class="fw-bold"><span class="quiz-time"></span></div>
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <i class="fas fa-stopwatch detail-icon"></i>
+                <div>
+                    <div class="text-muted small">Duration</div>
+                    <div class="fw-bold"><span class="quiz-duration"></span> minutes</div>
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <i class="fas fa-star detail-icon"></i>
+                <div>
+                    <div class="text-muted small">Total Grade</div>
+                    <div class="fw-bold"><span class="quiz-grade"></span> points</div>
+                </div>
+            </div>
+            
+            <div class="detail-item">
+                <i class="fas fa-question-circle detail-icon"></i>
+                <div>
+                    <div class="text-muted small">Questions</div>
+                    <div class="fw-bold"><span class="quiz-question-count"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Questions Container -->
+    <div id="questionsContainer" class="p-4"></div>
+</div>
+
+
+<!-- Question Template -->
+<div id="questionTemplate" class="d-none mb-4">
+    <div class="question-card p-3 mb-4 border rounded">
+        <div class="d-flex mb-3">
+            <h5 class="question-text mb-0 me-2" style="color: #2c3e50;"></h5>
+            <div style="width: 8px;"></div>  <!-- Reduced spacing -->
+            <span class="badge bg-primary align-self-start">
+                <span class="question-weight"></span> pts
+            </span>
+        </div>
+        <div class="choices-container ps-3"></div> 
+    </div>
+</div>
+
+<!-- Choice Template -->
+<div id="choiceTemplate" class="d-none form-check mb-2">
+    <div class="position-relative">
+        <input type="checkbox" class="form-check-input choice-input" disabled>
+        <span class="correct-answer-marker d-none position-absolute" style="left: -20px; top: 0.7px;">✓</span>
+    </div>
+    <label class="form-check-label choice-text ms-2"></label>
+</div>
+
+
+
+<div style="height: 10px;"></div>
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const quizId = window.location.pathname.split('/').pop();
+        const quizPaperContainer = document.getElementById('quizPaperContainer');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const actionButtons = document.getElementById('actionButtons');
+        const quizPaperTemplate = document.getElementById('quizPaperTemplate');
+        const questionTemplate = document.getElementById('questionTemplate');
+        const choiceTemplate = document.getElementById('choiceTemplate');
+    
+        // Fetch quiz details
+        fetch(`/get_quiz_details/${quizId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadingSpinner.remove();
+                    actionButtons.classList.remove('d-none');
+                    
+                    // Update publish button based on is_published status
+                    const publishBtn = document.getElementById('publishQuizBtn');
+                    if (data.quiz.is_published) {
+                        publishBtn.innerHTML = '<i class="fas fa-cloud-download-alt me-2" style="margin: 10px;"></i>Unpublish Solution';
+                        publishBtn.classList.remove('btn-success');
+                        publishBtn.classList.add('btn-warning');
+                        publishBtn.onclick = unpublishQuiz;
+                    } else {
+                        publishBtn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2" style="margin: 10px;"></i>Publish Solution';
+                        publishBtn.classList.remove('btn-warning');
+                        publishBtn.classList.add('btn-success');
+                        publishBtn.onclick = publishQuiz;
+                    }
+                    
+                    // Clone and populate the quiz paper template
+                    const quizPaper = quizPaperTemplate.cloneNode(true);
+                    quizPaper.classList.remove('d-none');
+                    
+                    // Set quiz header info
+                    quizPaper.querySelector('.quiz-id').textContent = data.quiz.quiz_id;
+                    quizPaper.querySelector('.quiz-title').textContent = data.quiz.title;
+                    quizPaper.querySelector('.quiz-description').textContent = data.quiz.description;
+                    quizPaper.querySelector('.quiz-duration').textContent = data.quiz.duration;
+                    quizPaper.querySelector('.quiz-grade').textContent = data.quiz.total_grade;
+                    quizPaper.querySelector('.quiz-date').textContent = data.quiz.formatted_date;
+                    quizPaper.querySelector('.quiz-time').textContent = data.quiz.formatted_start_time;
+                    quizPaper.querySelector('.quiz-created-at').textContent = new Date(data.quiz.created_at).toLocaleDateString();
+                    
+                    // Calculate and display question count
+                    const questionCount = data.quiz.questions.length;
+                    quizPaper.querySelector('.quiz-question-count').textContent = questionCount;
+                    
+                    // Add questions
+                    const questionsContainer = quizPaper.querySelector('#questionsContainer');
+                    data.quiz.questions.forEach((question, index) => {
+                        const questionElement = questionTemplate.cloneNode(true);
+                        questionElement.classList.remove('d-none');
+                        
+                        // Set question text and weight
+                        questionElement.querySelector('.question-text').textContent = `${index + 1}. ${question.question_text}`;
+                        questionElement.querySelector('.question-weight').textContent = question.question_weight;
+                        
+                        // Add choices
+                        const choicesContainer = questionElement.querySelector('.choices-container');
+                        question.choices.forEach(choice => {
+                            const choiceElement = choiceTemplate.cloneNode(true);
+                            choiceElement.classList.remove('d-none');
+                            
+                            // Set choice text and correct status
+                            choiceElement.querySelector('.choice-text').textContent = choice.choice_text;
+                            choiceElement.querySelector('.choice-input').setAttribute('data-is-correct', choice.is_correct ? '1' : '0');
+                            
+                            choicesContainer.appendChild(choiceElement);
+                        });
+                        
+                        questionsContainer.appendChild(questionElement);
+                    });
+                    
+                    quizPaperContainer.appendChild(quizPaper);
+    
+                    // Add event listener for Check Answers button after quiz is loaded
+                    document.getElementById('checkAnswersBtn').addEventListener('click', function() {
+                        // Get all choices that are correct
+                        const correctChoices = document.querySelectorAll('.choice-input[data-is-correct="1"]');
+                        
+                        // Loop through correct choices and show marker
+                        correctChoices.forEach(choice => {
+                            const container = choice.parentElement; // The div wrapping checkbox and tick
+                            const marker = container.querySelector('.correct-answer-marker');
+                            const label = choice.nextElementSibling; // The label element
+                            
+                            // Highlight the correct answer
+                            label.classList.add('correct-answer');
+                            marker.classList.remove('d-none');
+                        });
+                        
+                        // Disable the button after clicking
+                        this.disabled = true;
+                        this.innerHTML = '<i class="fas fa-check me-2"></i>Answers Checked';
+                    });
+                } else {
+                    loadingSpinner.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle me-2"></i> ${data.message || 'Failed to load quiz'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading quiz:', error);
+                loadingSpinner.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i> Failed to load quiz. Please try again later.
+                    </div>
+                `;
+            });
+
+        // Publish Quiz Function
+        function publishQuiz() {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2" style="margin: 10px;"></i>Publishing...';
+            btn.disabled = true;
+
+            fetch(`/publish_quiz/${quizId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button to unpublish state
+                    btn.innerHTML = '<i class="fas fa-cloud-download-alt me-2" style="margin: 10px;"></i>Unpublish Solution';
+                    btn.classList.remove('btn-success');
+                    btn.classList.add('btn-warning');
+                    btn.onclick = unpublishQuiz;
+                    
+                    // Show success toast
+                    showToast('Quiz published successfully!', 'success');
+                } else {
+                    throw new Error(data.message || 'Failed to publish quiz');
+                }
+            })
+            .catch(error => {
+                console.error('Publish error:', error);
+                showToast(error.message, 'error');
+                btn.innerHTML = originalHtml;
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        // Unpublish Quiz Function
+        function unpublishQuiz() {
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2" style="margin: 10px;"></i>Unpublishing...';
+            btn.disabled = true;
+
+            fetch(`/publish_quiz/${quizId}`, {  
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update button to publish state
+                    btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2" style="margin: 10px;"></i>Publish Solution';
+                    btn.classList.remove('btn-warning');
+                    btn.classList.add('btn-success');
+                    btn.onclick = publishQuiz;
+                    
+                    // Show success toast
+                    showToast('Quiz unpublished successfully!', 'success');
+                } else {
+                    throw new Error(data.message || 'Failed to unpublish quiz');
+                }
+            })
+            .catch(error => {
+                console.error('Unpublish error:', error);
+                showToast(error.message, 'error');
+                btn.innerHTML = originalHtml;
+            })
+            .finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        // Toast notification function
+        function showToast(message, type) {
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast show align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            toastEl.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'} me-2"></i>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toastEl);
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                toastEl.classList.remove('show');
+                setTimeout(() => toastEl.remove(), 150);
+            }, 5000);
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.position = 'fixed';
+            container.style.top = '20px';
+            container.style.right = '20px';
+            container.style.zIndex = '1100';
+            document.body.appendChild(container);
+            return container;
+        }
+    });
+</script>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+
+
+<script>
+    document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+        const btn = this;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating PDF...';
+        btn.disabled = true;
+        
+        // Clone and optimize for PDF
+        const quizPaper = document.getElementById('quizPaperContainer').cloneNode(true);
+        quizPaper.classList.add('pdf-optimized');
+        quizPaper.querySelectorAll('button, input').forEach(el => el.remove());
+        document.body.appendChild(quizPaper);
+        
+        // Tight PDF settings
+        const options = {
+            margin: [0, 0, 0, 0],  // Smaller margins (top, right, bottom, left)
+            filename: `${document.querySelector('.quiz-title')?.textContent || 'quiz'}.pdf`.replace(/[^a-z0-9]/gi, '_'),
+            image: { type: 'jpeg', quality: 1 },
+            html2canvas: { 
+                scale: 1.5,  // Slightly reduced scale
+                scrollX: 0,
+                scrollY: 0,
+                windowWidth: document.documentElement.offsetWidth,
+                useCORS: true,
+                ignoreElements: (el) => el.classList.contains('no-print')
+            },
+            jsPDF: { 
+                unit: 'mm',
+                format: 'a4',
+                orientation: 'portrait',
+                hotfixes: ["px_scaling"] 
+            },
+            pagebreak: { 
+                mode: ['avoid-all', 'css'],
+                before: '.page-break'  // Add class to elements where you want page breaks
+            }
+        };
+    
+        html2pdf()
+            .set(options)
+            .from(quizPaper)
+            .save()
+            .finally(() => {
+                document.body.removeChild(quizPaper);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            });
+    });
+    </script>
+
+
+{% endblock %}

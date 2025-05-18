@@ -1,0 +1,454 @@
+{% extends "theme.html" %}
+
+{% block title %}Quiz Preparation{% endblock %}
+
+{% block content %}
+<style>
+    /* Custom Styles */
+    .quiz-details-card, .question-card {
+      background: rgba(84, 84, 120, 0.7);
+      border-radius: 10px;
+      padding: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(5px);
+      color: white; 
+    }
+    
+    .dark-input {
+      background: rgba(30, 30, 60, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+    
+    .dark-input:focus {
+      background: rgba(40, 40, 80, 0.9);
+      color: white;
+      border-color: #6a11cb;
+      box-shadow: 0 0 0 0.25rem rgba(106, 17, 203, 0.25);
+    }
+    
+    .form-floating>.form-control:not(:placeholder-shown)~label,
+    .form-floating>.form-control:focus~label {
+      color: white; /* Brighter label text */
+    }
+    
+    .question-header {
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Enhanced checkbox styling */
+    .input-group-text {
+      background-color: rgba(30, 30, 60, 0.8) !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    .form-check-input {
+      width: 1.2em;
+      height: 1.2em;
+      margin-top: 0;
+      background-color: rgba(30, 30, 60, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .form-check-input:checked {
+      background-color: #6a11cb;
+      border-color: #6a11cb;
+    }
+    
+    .form-check-input:focus {
+      box-shadow: 0 0 0 0.25rem rgba(106, 17, 203, 0.25);
+    }
+    
+    /* White text for all labels and headings */
+    label, h2, h4, h6 {
+      color: white !important;
+    }
+    
+    .text-white-50 {
+      color: rgba(255, 255, 255, 0.7) !important;
+    }
+</style>
+
+<div class="container py-5">
+  <!-- Part 1: Quiz Details -->
+  <div class="quiz-details-card mb-5">
+    <h2 class="text-white mb-4"><i class="fas fa-cog me-2"  style="margin-right: 10px;"></i>Quiz Settings</h2>
+    
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="form-floating">
+          <input type="text" class="form-control dark-input" id="quizTitle" placeholder=" ">
+          <label for="quizTitle">Quiz Title</label>
+        </div>
+      </div>
+      
+      <div class="col-md-12">
+        <div class="form-floating">
+          <input type="text" class="form-control dark-input" id="quizDescription" placeholder=" ">
+          <label for="quizDescription">Quiz Description</label>
+        </div>
+      </div>
+
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input type="number" class="form-control dark-input" id="quizDuration" placeholder=" " min="1">
+          <label for="quizDuration">Duration (minutes)</label>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input type="date" class="form-control dark-input" id="quizDate">
+          <label for="quizDate">Date</label>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input type="text" class="form-control dark-input" id="quizTime" placeholder="HH:MM">
+          <label for="quizTime">Time</label>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input type="number" class="form-control dark-input" id="expectedQuestions" placeholder=" " min="1">
+          <label for="expectedQuestions">Expected Questions</label>
+        </div>
+      </div>
+      
+      <div class="col-md-3">
+        <div class="form-floating">
+          <input type="number" class="form-control dark-input" style="color: black;" id="totalGrade" placeholder=" " readonly>
+          <label for="totalGrade">Total Grade</label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Part 2: Questions Section -->
+  <div class="questions-section">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2 class="text-white"><i class="fas fa-question-circle me-2"  style="margin-right: 10px;"></i>Questions</h2>
+      <button id="addQuestionBtn" class="btn btn-primary">
+        <i class="fas fa-plus me-2" style="margin-right: 10px;"></i>Add Question
+      </button>
+    </div>
+    
+    <div id="questionsContainer">
+      <!-- Questions will be added here dynamically -->
+    </div>
+    
+    <div class="d-grid mt-4">
+      <button id="submitQuizBtn" class="btn btn-lg btn-success py-3">
+        <i class="fas fa-paper-plane me-2" style="margin-right: 10px;"></i>Submit Quiz
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Question Template (Hidden) -->
+<div id="questionTemplate" class="d-none">
+  <div class="question-card mb-4" data-question-id="">
+    <div class="question-header d-flex justify-content-between align-items-center mb-3">
+      <h4 class="text-white mb-0">Question <span class="question-number">1</span></h4>
+      <button class="btn btn-danger btn-sm delete-question">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+    
+    <div class="form-floating mb-3">
+      <textarea class="form-control dark-input question-text" placeholder=" "></textarea>
+      <label>Question Text</label>
+    </div>
+    
+    <div class="row g-3 mb-3">
+      <div class="col-md-6">
+        <div class="form-floating">
+          <input type="number" class="form-control dark-input question-weight" placeholder=" " min="1">
+          <label>Question Weight</label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="answers-container">
+      <h6 class="text-white-50 mb-3">Answers:</h6>
+      <div class="answer-item mb-2">
+        <div class="input-group">
+          <div class="input-group-text">
+            <input class="form-check-input answer-correct" type="checkbox">
+          </div>
+          <input type="text" class="form-control dark-input answer-text" placeholder="Answer text">
+          <button class="btn btn-outline-danger delete-answer">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      <!-- More answers will be added here -->
+      
+      <button class="btn btn-sm btn-outline-primary add-answer mt-2">
+        <i class="fas fa-plus me-1" style="margin-right: 10px;"></i>Add Answer
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Time Handling Script -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+      const timeInput = document.getElementById('quizTime');
+      
+      if (timeInput) {
+          let lastValidValue = '';
+          
+          timeInput.addEventListener('input', function(e) {
+              // Get cursor position before changes
+              const cursorPos = this.selectionStart;
+              
+              // Remove all non-digits and limit to 4 numbers (HHMM)
+              let numbers = this.value.replace(/[^\d]/g, '').substring(0, 4);
+              let formatted = '';
+              
+              // Build formatted string
+              if (numbers.length > 0) {
+                  formatted = numbers.substring(0, 2); // HH
+                  
+                  if (numbers.length >= 3) {
+                      // Validate hours (00-23)
+                      const hours = parseInt(numbers.substring(0, 2));
+                      if (hours > 23) {
+                          numbers = '23' + numbers.substring(2);
+                          formatted = '23';
+                      }
+                      
+                      formatted += ':' + numbers.substring(2, 4); // :MM
+                      
+                      // Validate minutes (00-59)
+                      const mins = parseInt(numbers.substring(2, 4));
+                      if (mins > 59) {
+                          numbers = numbers.substring(0, 2) + '59';
+                          formatted = formatted.substring(0, 3) + '59';
+                      }
+                  }
+              }
+              
+              // Update value
+              this.value = formatted;
+              lastValidValue = this.value;
+              
+              // Restore cursor position (adjusted for added colon)
+              let newCursorPos = cursorPos;
+              if (cursorPos >= 2 && numbers.length >= 2 && this.value.length > cursorPos) newCursorPos++;
+              this.setSelectionRange(newCursorPos, newCursorPos);
+              
+              // Visual validation
+              const isValid = this.value.length === 5; // HH:MM
+              this.style.borderColor = isValid ? '#e0e6ed' : '#dc3545';
+          });
+          
+          // Blur validation to ensure complete time
+          timeInput.addEventListener('blur', function() {
+              if (this.value.length === 2) { // Only hours (HH)
+                  this.value += ':00';
+              }
+              
+              // Final format validation
+              if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(this.value)) {
+                  this.style.borderColor = '#dc3545';
+              } else {
+                  this.style.borderColor = '#e0e6ed';
+              }
+          });
+      }
+  });
+</script>
+
+<script>
+  // JavaScript for dynamic question/answer management and quiz submission
+  document.addEventListener('DOMContentLoaded', function() {
+    let questionCount = 0;
+    const questionsContainer = document.getElementById('questionsContainer');
+    const questionTemplate = document.getElementById('questionTemplate');
+    const totalGradeInput = document.getElementById('totalGrade');
+    const submitBtn = document.getElementById('submitQuizBtn');
+    
+    // Initialize total grade to 0
+    totalGradeInput.value = '0';
+    
+    // Store the original answer template from the hidden question template
+    const originalAnswerTemplate = questionTemplate.querySelector('.answer-item').cloneNode(true);
+    
+    // Add question button
+    document.getElementById('addQuestionBtn').addEventListener('click', function() {
+      questionCount++;
+      const newQuestion = questionTemplate.cloneNode(true);
+      newQuestion.classList.remove('d-none');
+      newQuestion.querySelector('.question-number').textContent = questionCount;
+      newQuestion.setAttribute('data-question-id', questionCount);
+      questionsContainer.appendChild(newQuestion);
+      
+      // Initialize answer management for this question
+      initQuestion(newQuestion);
+    });
+    
+    function initQuestion(questionElement) {
+      // Delete question button
+      questionElement.querySelector('.delete-question').addEventListener('click', function() {
+        questionElement.remove();
+        updateQuestionNumbers();
+        updateTotalGrade();
+      });
+      
+      // Add answer button
+      questionElement.querySelector('.add-answer').addEventListener('click', function() {
+        addAnswer(questionElement);
+      });
+      
+      // Enable delete for all existing answers (including first one)
+      questionElement.querySelectorAll('.answer-item').forEach(answer => {
+        answer.querySelector('.delete-answer').addEventListener('click', function() {
+          answer.remove();
+        });
+      });
+      
+      // Add weight change listener
+      const weightInput = questionElement.querySelector('.question-weight');
+      weightInput.addEventListener('input', updateTotalGrade);
+      weightInput.addEventListener('change', updateTotalGrade);
+    }
+    
+    function addAnswer(questionElement) {
+      const answersContainer = questionElement.querySelector('.answers-container');
+      
+      // Always use the original answer template
+      const newAnswer = originalAnswerTemplate.cloneNode(true);
+      
+      newAnswer.querySelector('.answer-text').value = '';
+      newAnswer.querySelector('.answer-correct').checked = false;
+      answersContainer.insertBefore(newAnswer, questionElement.querySelector('.add-answer'));
+      
+      // Add delete functionality to new answer
+      newAnswer.querySelector('.delete-answer').addEventListener('click', function() {
+        newAnswer.remove();
+      });
+    }
+    
+    function updateQuestionNumbers() {
+      const questions = questionsContainer.querySelectorAll('.question-card');
+      questions.forEach((question, index) => {
+        question.querySelector('.question-number').textContent = index + 1;
+      });
+      questionCount = questions.length;
+    }
+    
+    function updateTotalGrade() {
+      let total = 0;
+      const questions = questionsContainer.querySelectorAll('.question-card');
+      
+      questions.forEach(question => {
+        const weightInput = question.querySelector('.question-weight');
+        const weight = parseFloat(weightInput.value) || 0;
+        total += weight;
+      });
+      
+      totalGradeInput.value = total;
+    }
+    
+    // Quiz submission handler
+    submitBtn.addEventListener('click', async function() {
+      // Disable button during submission
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating Quiz...';
+      
+      try {
+        // Collect quiz data
+        const quizData = {
+          quizTitle: document.getElementById('quizTitle').value,
+          quizDescription: document.getElementById('quizDescription').value,
+          quizDuration: document.getElementById('quizDuration').value,
+          quizDate: document.getElementById('quizDate').value,
+          quizTime: document.getElementById('quizTime').value,
+          expectedQuestions: document.getElementById('expectedQuestions').value,
+          totalGrade: totalGradeInput.value,
+          questions: []
+        };
+        
+        // Validate required fields
+        if (!quizData.quizTitle || !quizData.quizDescription || !quizData.quizDate || !quizData.quizTime || !quizData.expectedQuestions) {
+          throw new Error('Please fill in all required fields');
+        }
+        
+        // Collect questions and answers
+        const questionCards = document.querySelectorAll('.question-card');
+        questionCards.forEach(card => {
+          const questionText = card.querySelector('.question-text').value;
+          const questionWeight = card.querySelector('.question-weight').value;
+          
+          if (!questionText) return; // Skip empty questions
+          
+          const choices = [];
+          card.querySelectorAll('.answer-item').forEach(answer => {
+            const answerText = answer.querySelector('.answer-text').value;
+            const isCorrect = answer.querySelector('.answer-correct').checked;
+            
+            if (answerText) {
+              choices.push({
+                text: answerText,
+                isCorrect: isCorrect
+              });
+            }
+          });
+          
+          quizData.questions.push({
+            questionText: questionText,
+            questionWeight: questionWeight,
+            choices: choices
+          });
+        });
+        
+        // Validate at least one question exists
+        if (quizData.questions.length === 0) {
+          throw new Error('Please add at least one question');
+        }
+        
+        // Send to backend
+        const response = await fetch(`/createQuiz/{{course_professor_id}}`, {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(quizData)
+        });
+
+        // First check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const result = await response.json();
+          if (result.success) {
+              window.location.href = result.redirect_url;
+          } else {
+              throw new Error(result.message || 'Failed to create quiz');
+          }
+        } else {
+          // If not JSON, maybe HTML fallback
+          window.location.href = `/quizPrep/{{course_professor_id}}`;
+        }
+
+      } catch (error) {
+        // Show error message
+        alert(error.message);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit Quiz';
+      }
+    });
+    
+    // Add first question by default
+    document.getElementById('addQuestionBtn').click();
+  });
+</script>
+
+
+{% endblock %}
